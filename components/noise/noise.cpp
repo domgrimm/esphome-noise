@@ -5,6 +5,8 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
+#include <cmath>
+
 namespace esphome::noise {
 
 static const char *const TAG = "noise";
@@ -15,8 +17,6 @@ void NoiseComponent::setup() {
     this->mark_failed();
     return;
   }
-  // Do not force a format here: we read the speaker's own stream info on play(),
-  // so the component adapts to whatever the target device's speaker uses.
 }
 
 void NoiseComponent::dump_config() {
@@ -25,8 +25,31 @@ void NoiseComponent::dump_config() {
 }
 
 void NoiseComponent::play(const std::string &variant) {
-  this->y1_ = this->y2_ = this->y3_ = this->brown_ = 0.f;
-  if (variant == "pink") {
+  this->y1_ = this->y2_ = this->y3_ = this->brown_ = this->lp_ = 0.f;
+  this->wind_target_ = this->wind_amp_ = 1.f;
+  this->cricket_phase_ = this->cricket_amp_ = this->cricket_t_ = 0.f;
+  this->crackle_t_ = 0.f;
+  this->time_smp_ = 0;
+  for (auto &d : this->drops_)
+    d.amp = 0.f;
+
+  if (variant == "waves") {
+    this->variant_ = NoiseVariant::WAVES;
+  } else if (variant == "wind") {
+    this->variant_ = NoiseVariant::WIND;
+  } else if (variant == "rain") {
+    this->variant_ = NoiseVariant::RAIN;
+  } else if (variant == "stream") {
+    this->variant_ = NoiseVariant::STREAM;
+  } else if (variant == "fan") {
+    this->variant_ = NoiseVariant::FAN;
+  } else if (variant == "crickets") {
+    this->variant_ = NoiseVariant::CRICKETS;
+  } else if (variant == "fire") {
+    this->variant_ = NoiseVariant::FIRE;
+  } else if (variant == "hum") {
+    this->variant_ = NoiseVariant::HUM;
+  } else if (variant == "pink") {
     this->variant_ = NoiseVariant::PINK;
   } else if (variant == "brown") {
     this->variant_ = NoiseVariant::BROWN;
@@ -36,7 +59,6 @@ void NoiseComponent::play(const std::string &variant) {
     this->variant_ = NoiseVariant::WHITE;
   }
 
-  // Follow the target speaker's format (rate + channel count).
   auto info = this->speaker_->get_audio_stream_info();
   uint32_t rate = info.get_sample_rate() ? info.get_sample_rate() : 16000;
   this->channels_ = info.get_channels() ? info.get_channels() : 1;
@@ -55,8 +77,7 @@ void NoiseComponent::play(const std::string &variant) {
     this->stop_req_ = false;
     this->running_ = true;
     xTaskCreate(&NoiseComponent::noise_task_, "noise", 4096, this, 3, nullptr);
-    ESP_LOGI(TAG, "Playing %s noise (%u Hz, %u ch)", variant.c_str(), (unsigned) this->rate_,
-             this->channels_);
+    ESP_LOGI(TAG, "Playing %s noise (%u Hz, %u ch)", variant.c_str(), (unsigned) this->rate_, this->channels_);
   } else {
     ESP_LOGI(TAG, "Switched noise to %s", variant.c_str());
   }
@@ -75,13 +96,14 @@ void NoiseComponent::stop() {
 void NoiseSelect::control(const std::string &value) {
   if (value == "Off") {
     this->parent_->stop();
-    return;
+  } else {
+    std::string v;
+    v.reserve(value.size());
+    for (char c : value)
+      v += (c >= 'A' && c <= 'Z') ? char(c + 32) : c;
+    this->parent_->play(v);
   }
-  std::string v;
-  v.reserve(value.size());
-  for (char c : value)
-    v += (c >= 'A' && c <= 'Z') ? char(c + 32) : c;
-  this->parent_->play(v);
+  this->publish_state(value);
 }
 
 void NoiseComponent::noise_task_(void *param) {
@@ -101,34 +123,159 @@ void NoiseComponent::task_loop_() {
 void NoiseComponent::generate_chunk_(int16_t *samples, size_t frames) {
   uint32_t rng = this->rng_;
   const uint8_t channels = this->channels_;
+  const float rate = static_cast<float>(this->rate_);
+  const float tau2pi = 6.28318530718f;
+
   for (size_t i = 0; i < frames; i++) {
+    const uint64_t t = this->time_smp_++;
+    const float ft = static_cast<float>(t);
+
     rng ^= rng << 13;
     rng ^= rng >> 17;
     rng ^= rng << 5;
     const float w = (float) ((int16_t) (rng >> 16)) / 32768.0f;
+    const float rndf = (float) (rng & 0xFFFF) / 65536.0f;
+
+    auto brown_core = [&]() {
+      this->brown_ = (this->brown_ + 0.02f * w) / 1.02f;
+      return this->brown_;
+    };
+    auto pink_core = [&]() {
+      this->y1_ += 0.05f * (w - this->y1_);
+      this->y2_ += 0.22f * (w - this->y2_);
+      this->y3_ += 0.50f * (w - this->y3_);
+      return (this->y1_ + this->y2_ + this->y3_) * 1.4f;
+    };
 
     float out = 0.0f;
     switch (this->variant_) {
       case NoiseVariant::WHITE:
         out = w * 0.25f;
         break;
-      case NoiseVariant::PINK: {
-        this->y1_ += 0.05f * (w - this->y1_);
-        this->y2_ += 0.22f * (w - this->y2_);
-        this->y3_ += 0.50f * (w - this->y3_);
-        out = (this->y1_ + this->y2_ + this->y3_) * 1.4f * 0.30f;
+      case NoiseVariant::PINK:
+        out = pink_core() * 0.18f;
         break;
-      }
       case NoiseVariant::BROWN:
-        this->brown_ = (this->brown_ + 0.02f * w) / 1.02f;
-        out = this->brown_ * 3.5f * 0.30f;
+        out = brown_core() * 3.5f * 0.50f;
         break;
       case NoiseVariant::GRAY: {
         rng ^= rng << 13;
         rng ^= rng >> 17;
         rng ^= rng << 5;
         const float w2 = (float) ((int16_t) (rng >> 16)) / 32768.0f;
-        out = 0.7f * (w + w2) / 1.4142f * 0.30f;
+        out = 0.7f * (w + w2) / 1.4142f * 0.36f;
+        break;
+      }
+      case NoiseVariant::WAVES: {
+        brown_core();
+        const float swell = 0.55f + 0.35f * std::sin(tau2pi * 0.11f * ft / rate) +
+                           0.10f * std::sin(tau2pi * 0.29f * ft / rate + 1.7f);
+        out = (this->brown_ * swell * 3.0f + w * 0.10f * swell) * 0.90f;
+        break;
+      }
+      case NoiseVariant::WIND: {
+        this->lp_ += (w - this->lp_) * 0.035f;
+        if ((t & 0x1FF) == 0)
+          this->wind_target_ = 0.4f + 0.6f * rndf;
+        this->wind_amp_ += (this->wind_target_ - this->wind_amp_) * 0.002f;
+        const float wob = 1.0f + 0.12f * std::sin(tau2pi * 0.33f * ft / rate);
+        out = this->lp_ * this->wind_amp_ * wob * 1.9f;
+        break;
+      }
+      case NoiseVariant::RAIN: {
+        this->lp_ += (w - this->lp_) * 0.16f;
+        const float hp = w - this->lp_;
+        out = hp * 0.24f;
+        for (auto &d : this->drops_) {
+          if (d.amp > 0.001f) {
+            d.phase += tau2pi * d.freq / rate;
+            d.amp *= d.decay;
+            out += std::sin(d.phase) * d.amp;
+            if (d.amp <= 0.001f)
+              d.amp = 0.f;
+          }
+        }
+        if ((rng & 0xFFFF) < 164) {  // ~40 droplets/s
+          for (auto &d : this->drops_) {
+            if (d.amp <= 0.001f) {
+              d.phase = 0.f;
+              d.freq = 350.0f + 500.0f * rndf;
+              d.amp = 0.14f + 0.10f * rndf;
+              d.decay = std::exp(-1.0f / (rate * 0.022f));
+              break;
+            }
+          }
+        }
+        break;
+      }
+      case NoiseVariant::STREAM: {
+        const float pink = pink_core();
+        const float m = 0.75f + 0.25f * std::sin(tau2pi * 0.6f * ft / rate) +
+                        0.12f * std::sin(tau2pi * 1.7f * ft / rate + 2.1f);
+        out = pink * m * 0.90f * 0.24f;
+        break;
+      }
+      case NoiseVariant::FAN: {
+        this->lp_ += (w - this->lp_) * 0.06f;
+        const float wob = 0.85f + 0.15f * std::sin(tau2pi * 30.0f * ft / rate);
+        out = this->lp_ * wob * 1.3f;
+        break;
+      }
+      case NoiseVariant::CRICKETS: {
+        if (this->cricket_amp_ > 0.002f) {
+          this->cricket_phase_ += tau2pi * this->cricket_freq_ / rate;
+          this->cricket_amp_ *= std::exp(-1.0f / (rate * 0.02f));
+          const float gate = std::sin(tau2pi * 56.0f * ft / rate) > 0.f ? 1.0f : 0.0f;
+          out = this->cricket_amp_ * gate * std::sin(this->cricket_phase_);
+          if (this->cricket_amp_ <= 0.002f)
+            this->cricket_amp_ = 0.f;
+        } else {
+          this->cricket_t_ -= 1.0f / rate;
+          if (this->cricket_t_ <= 0.f) {
+            this->cricket_amp_ = 0.80f * (0.6f + 0.4f * rndf);
+            this->cricket_freq_ = 3800.0f + 900.0f * rndf;
+            this->cricket_t_ = 0.4f + 1.4f * rndf;
+          }
+        }
+        break;
+      }
+      case NoiseVariant::FIRE: {
+        brown_core();
+        this->lp_ += (this->brown_ * 3.0f - this->lp_) * 0.05f;
+        out = this->lp_ * 0.65f;
+        for (auto &d : this->drops_) {
+          if (d.amp > 0.001f) {
+            d.phase += tau2pi * d.freq / rate;
+            d.amp *= d.decay;
+            out += std::sin(d.phase) * d.amp;
+            if (d.amp <= 0.001f)
+              d.amp = 0.f;
+          }
+        }
+        this->crackle_t_ -= 1.0f / rate;
+        if (this->crackle_t_ <= 0.f) {
+          this->crackle_t_ = 0.02f + 0.08f * rndf;
+          int pops = 1 + (int) (rndf * 3.0f);
+          for (auto &d : this->drops_) {
+            if (pops <= 0)
+              break;
+            if (d.amp <= 0.001f) {
+              d.phase = 0.f;
+              d.freq = 1200.0f + 4800.0f * rndf;
+              d.amp = 0.14f + 0.16f * rndf;
+              d.decay = std::exp(-1.0f / (rate * (0.002f + 0.004f * rndf)));
+              pops--;
+            }
+          }
+        }
+        break;
+      }
+      case NoiseVariant::HUM: {
+        const float a = (0.16f + 0.04f * std::sin(tau2pi * 0.2f * ft / rate)) *
+                        std::sin(tau2pi * 100.0f * ft / rate);
+        const float b = 0.16f * (1.0f + 0.05f * std::sin(tau2pi * 0.13f * ft / rate)) *
+                        std::sin(tau2pi * 104.0f * ft / rate);
+        out = (a + b) * 0.8f;
         break;
       }
     }
