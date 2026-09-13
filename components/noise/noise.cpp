@@ -68,7 +68,7 @@ void NoiseComponent::play(const std::string &variant) {
     this->speaker_->start();
     this->stop_req_ = false;
     this->running_ = true;
-    xTaskCreate(&NoiseComponent::noise_task_, "noise", 4096, this, 3, nullptr);
+    xTaskCreate(&NoiseComponent::noise_task_, "noise", 4096, this, 1, nullptr);
     ESP_LOGI(TAG, "Playing %s noise (%u Hz, %u ch)", variant.c_str(), (unsigned) this->rate_, this->channels_);
   } else {
     ESP_LOGI(TAG, "Switched noise to %s", variant.c_str());
@@ -109,6 +109,9 @@ void NoiseComponent::task_loop_() {
     this->generate_chunk_(this->pcm_.data(), FRAMES_PER_CHUNK);
     this->speaker_->play(reinterpret_cast<uint8_t *>(this->pcm_.data()),
                          this->pcm_.size() * sizeof(int16_t), pdMS_TO_TICKS(20));
+    // Let the scheduler breathe: play() can return instantly when the ring
+    // buffer has room, so yield explicitly or a tight spin trips the task WDT.
+    vTaskDelay(pdMS_TO_TICKS(1));
   }
 }
 
