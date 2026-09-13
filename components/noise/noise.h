@@ -2,6 +2,7 @@
 
 #include "esphome/core/component.h"
 #include "esphome/core/automation.h"
+#include "esphome/components/select/select.h"
 #include "esphome/components/speaker/speaker.h"
 
 #include <cstdint>
@@ -52,6 +53,17 @@ class NoiseComponent : public Component {
   std::vector<int16_t> pcm_;
   speaker::Speaker *speaker_{nullptr};
   static constexpr size_t FRAMES_PER_CHUNK = 1024;
+};
+
+// Auto-created select entity: options seeded from the variant list, control()
+// starts/stops playback — no device automation required.
+class NoiseSelect : public select::Select {
+ public:
+  void set_parent(NoiseComponent *parent) { this->parent_ = parent; }
+  void control(const std::string &value) override;
+
+ protected:
+  NoiseComponent *parent_{nullptr};
 };
 
 // Action support: noise.start / noise.stop

@@ -26,8 +26,31 @@ noise:
   speaker: i2s_audio_speaker
   # optional: override the speaker's native sample rate, e.g. 22050
   # sample_rate: 22050
+  # optional: auto-create the "Noise" select entity (name gives it a HA entity)
+  select:
+    name: Noise
+```
 
-# Trigger actions from buttons / automations / selects:
+### Auto select entity
+
+Add the optional `select:` block and the component creates the select for you —
+options are auto-filled from the variant list (Off + all variants, exactly in
+sync), and changing it starts/stops playback directly. No device-side
+automation needed:
+
+```yaml
+noise:
+  speaker: i2s_audio_speaker
+  select:
+    name: Noise
+```
+
+### Manual actions
+
+Triggers can still call the actions from buttons / automations / scripts —
+useful when you don't want a select entity:
+
+```yaml
 script:
   - id: noise_on
     then:

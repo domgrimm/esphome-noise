@@ -1,4 +1,4 @@
-# Generic example: any ESP32 + I2S speaker, noise select + physical button.
+# Generic example: any ESP32 + I2S speaker, auto "Noise" select + physical button.
 esphome:
   name: noise-demo
 
@@ -24,49 +24,14 @@ speaker:
 noise:
   id: my_noise
   speaker: i2s_audio_speaker
-
-# Live noise-color picker + a button to toggle it.
-select:
-  - platform: template
+  select:
     id: noise_select
-    name: "Noise"
-    options: ["Off", "White", "Pink", "Brown", "Gray", "Waves", "Wind", "Rain", "Stream", "Fan", "Crickets", "Fire", "Hum"]
-    initial_option: "Off"
+    name: Noise
 
+# A physical button toggling the (auto-created) select — starts/stops noise.
 button:
   - platform: template
     name: "Toggle Noise"
     on_press:
-      - if:
-          condition:
-            lambda: 'return id(noise_select).state != "Off";'
-          then:
-            - noise.stop:
-                id: my_noise
-            - select.set_option:
-                id: noise_select
-                option: "Off"
-          else:
-            - noise.start:
-                id: my_noise
-                variant: white
-            - select.set_option:
-                id: noise_select
-                option: "White"
-
-# Automation to follow the select (switch noise colors live).
-automation:
-  - trigger:
-      - platform: state
-        entity_id: select.noise_demo_noise
-    action:
-      - if:
-          condition:
-            lambda: 'return id(noise_select).state == "Off";'
-          then:
-            - noise.stop:
-                id: my_noise
-          else:
-            - noise.start:
-                id: my_noise
-                variant: !lambda 'return id(noise_select).state.lower();'
+      - select.next:
+          id: noise_select

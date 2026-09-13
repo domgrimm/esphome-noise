@@ -72,6 +72,18 @@ void NoiseComponent::stop() {
   ESP_LOGI(TAG, "Noise stopped");
 }
 
+void NoiseSelect::control(const std::string &value) {
+  if (value == "Off") {
+    this->parent_->stop();
+    return;
+  }
+  std::string v;
+  v.reserve(value.size());
+  for (char c : value)
+    v += (c >= 'A' && c <= 'Z') ? char(c + 32) : c;
+  this->parent_->play(v);
+}
+
 void NoiseComponent::noise_task_(void *param) {
   auto *self = static_cast<NoiseComponent *>(param);
   self->task_loop_();
