@@ -27,8 +27,6 @@ void NoiseComponent::dump_config() {
 void NoiseComponent::play(const std::string &variant) {
   this->y1_ = this->y2_ = this->y3_ = this->brown_ = this->lp_ = 0.f;
   this->wind_target_ = this->wind_amp_ = 1.f;
-  this->cricket_phase_ = this->cricket_amp_ = this->cricket_t_ = 0.f;
-  this->crackle_t_ = 0.f;
   this->time_smp_ = 0;
   for (auto &d : this->drops_)
     d.amp = 0.f;
@@ -43,12 +41,6 @@ void NoiseComponent::play(const std::string &variant) {
     this->variant_ = NoiseVariant::STREAM;
   } else if (variant == "fan") {
     this->variant_ = NoiseVariant::FAN;
-  } else if (variant == "crickets") {
-    this->variant_ = NoiseVariant::CRICKETS;
-  } else if (variant == "fire") {
-    this->variant_ = NoiseVariant::FIRE;
-  } else if (variant == "hum") {
-    this->variant_ = NoiseVariant::HUM;
   } else if (variant == "pink") {
     this->variant_ = NoiseVariant::PINK;
   } else if (variant == "brown") {
@@ -185,7 +177,7 @@ void NoiseComponent::generate_chunk_(int16_t *samples, size_t frames) {
       case NoiseVariant::RAIN: {
         this->lp_ += (w - this->lp_) * 0.16f;
         const float hp = w - this->lp_;
-        out = hp * 0.24f;
+        out = hp * 0.18f;
         for (auto &d : this->drops_) {
           if (d.amp > 0.001f) {
             d.phase += tau2pi * d.freq / rate;
@@ -195,13 +187,13 @@ void NoiseComponent::generate_chunk_(int16_t *samples, size_t frames) {
               d.amp = 0.f;
           }
         }
-        if ((rng & 0xFFFF) < 164) {  // ~40 droplets/s
+        if ((rng & 0xFFFF) < 98) {  // ~24 droplets/s
           for (auto &d : this->drops_) {
             if (d.amp <= 0.001f) {
               d.phase = 0.f;
               d.freq = 350.0f + 500.0f * rndf;
-              d.amp = 0.14f + 0.10f * rndf;
-              d.decay = std::exp(-1.0f / (rate * 0.022f));
+              d.amp = 0.08f + 0.06f * rndf;
+              d.decay = std::exp(-1.0f / (rate * 0.045f));
               break;
             }
           }
@@ -210,8 +202,8 @@ void NoiseComponent::generate_chunk_(int16_t *samples, size_t frames) {
       }
       case NoiseVariant::STREAM: {
         const float pink = pink_core();
-        const float m = 0.75f + 0.25f * std::sin(tau2pi * 0.6f * ft / rate) +
-                        0.12f * std::sin(tau2pi * 1.7f * ft / rate + 2.1f);
+        const float m = 0.75f + 0.25f * std::sin(tau2pi * 0.13f * ft / rate) +
+                        0.12f * std::sin(tau2pi * 0.41f * ft / rate + 2.1f);
         out = pink * m * 0.90f * 0.24f;
         break;
       }
@@ -219,63 +211,6 @@ void NoiseComponent::generate_chunk_(int16_t *samples, size_t frames) {
         this->lp_ += (w - this->lp_) * 0.06f;
         const float wob = 0.85f + 0.15f * std::sin(tau2pi * 30.0f * ft / rate);
         out = this->lp_ * wob * 1.3f;
-        break;
-      }
-      case NoiseVariant::CRICKETS: {
-        if (this->cricket_amp_ > 0.002f) {
-          this->cricket_phase_ += tau2pi * this->cricket_freq_ / rate;
-          this->cricket_amp_ *= std::exp(-1.0f / (rate * 0.02f));
-          const float gate = std::sin(tau2pi * 56.0f * ft / rate) > 0.f ? 1.0f : 0.0f;
-          out = this->cricket_amp_ * gate * std::sin(this->cricket_phase_);
-          if (this->cricket_amp_ <= 0.002f)
-            this->cricket_amp_ = 0.f;
-        } else {
-          this->cricket_t_ -= 1.0f / rate;
-          if (this->cricket_t_ <= 0.f) {
-            this->cricket_amp_ = 0.80f * (0.6f + 0.4f * rndf);
-            this->cricket_freq_ = 3800.0f + 900.0f * rndf;
-            this->cricket_t_ = 0.4f + 1.4f * rndf;
-          }
-        }
-        break;
-      }
-      case NoiseVariant::FIRE: {
-        brown_core();
-        this->lp_ += (this->brown_ * 3.0f - this->lp_) * 0.05f;
-        out = this->lp_ * 0.65f;
-        for (auto &d : this->drops_) {
-          if (d.amp > 0.001f) {
-            d.phase += tau2pi * d.freq / rate;
-            d.amp *= d.decay;
-            out += std::sin(d.phase) * d.amp;
-            if (d.amp <= 0.001f)
-              d.amp = 0.f;
-          }
-        }
-        this->crackle_t_ -= 1.0f / rate;
-        if (this->crackle_t_ <= 0.f) {
-          this->crackle_t_ = 0.02f + 0.08f * rndf;
-          int pops = 1 + (int) (rndf * 3.0f);
-          for (auto &d : this->drops_) {
-            if (pops <= 0)
-              break;
-            if (d.amp <= 0.001f) {
-              d.phase = 0.f;
-              d.freq = 1200.0f + 4800.0f * rndf;
-              d.amp = 0.14f + 0.16f * rndf;
-              d.decay = std::exp(-1.0f / (rate * (0.002f + 0.004f * rndf)));
-              pops--;
-            }
-          }
-        }
-        break;
-      }
-      case NoiseVariant::HUM: {
-        const float a = (0.16f + 0.04f * std::sin(tau2pi * 0.2f * ft / rate)) *
-                        std::sin(tau2pi * 100.0f * ft / rate);
-        const float b = 0.16f * (1.0f + 0.05f * std::sin(tau2pi * 0.13f * ft / rate)) *
-                        std::sin(tau2pi * 104.0f * ft / rate);
-        out = (a + b) * 0.8f;
         break;
       }
     }

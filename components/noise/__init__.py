@@ -13,7 +13,7 @@ NoiseSelect = noise_ns.class_("NoiseSelect", select.Select)
 NoiseStartAction = noise_ns.class_("NoiseStartAction", automation.Action, cg.Parented.template(NoiseComponent))
 NoiseStopAction = noise_ns.class_("NoiseStopAction", automation.Action, cg.Parented.template(NoiseComponent))
 
-VARIANTS = ["white", "pink", "brown", "gray", "waves", "wind", "rain", "stream", "fan", "crickets", "fire", "hum"]
+VARIANTS = ["white", "pink", "brown", "gray", "waves", "wind", "rain", "stream", "fan"]
 
 CONF_SELECT = "select"
 

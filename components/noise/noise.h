@@ -21,9 +21,6 @@ enum class NoiseVariant : uint8_t {
   RAIN,
   STREAM,
   FAN,
-  CRICKETS,
-  FIRE,
-  HUM,
 };
 
 /// Procedural noise generator.
@@ -61,8 +58,6 @@ class NoiseComponent : public Component {
   float y1_{0.f}, y2_{0.f}, y3_{0.f}, brown_{0.f};
   float lp_{0.f};
   float wind_target_{1.f}, wind_amp_{1.f};
-  float cricket_phase_{0.f}, cricket_amp_{0.f}, cricket_t_{0.f}, cricket_freq_{4200.f};
-  float crackle_t_{0.f};
   Drop drops_[6];
   uint64_t time_smp_{0};
   bool running_{false};
