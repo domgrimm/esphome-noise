@@ -1,12 +1,14 @@
 # esphome-noise
 
-Procedural noise generator for ESPHome — white / pink / brown / gray.
+Procedural sleep-sound generator for ESPHome — white / pink / brown / gray
+noise plus on-device waves, wind, rain, stream, fan, crickets, fire and a
+low drone hum.
 
 Hardware-agnostic: binds to any `speaker` platform (I2S DAC, amp chip, whatever)
 and automatically follows that speaker's configured sample rate and channel
 count, so it runs unchanged on almost any ESP32 with an audio output. It has no
-pins, no network, no files — the noise is generated on the chip itself, so it
-works fully offline and can play indefinitely (ideal for sleepers / 10-hour
+pins, no network, no files — every sound is synthesized on the chip itself, so
+it works fully offline and can play indefinitely (ideal for sleepers / 10-hour
 white-noise flows).
 
 ## Install
@@ -28,17 +30,39 @@ noise:
 # Trigger actions from buttons / automations / selects:
 script:
   - id: noise_on
-    sequence:
+    then:
       - noise.start:
           id: my_noise
-          variant: brown   # white | pink | brown | gray (templatable)
+          variant: brown   # see Variants below (templatable)
   - id: noise_off
-    sequence:
-      - noise.stop: my_noise
+    then:
+      - noise.stop:
+          id: my_noise
 ```
 
 `variant` is templatable, so an `output.select` → `select.option` automation
-can switch noise color live. See `example.yaml`.
+can switch sounds live. See `example.yaml`.
+
+## Variants
+
+| variant | sound |
+|---|---|
+| `white` | flat broadband hiss |
+| `pink` | gentle 1/f hiss |
+| `brown` | deep rumble, classic sleeping noise |
+| `gray` | psychoacoustically flat hiss |
+| `waves` | ocean surf: brown noise under slow swell LFOs |
+| `wind` | low-pass filtered hiss with slowly drifting gusts |
+| `rain` | bright patter + sparse droplets |
+| `stream` | bubbling water: pink noise, faster irregular modulation |
+| `fan` | box-fan rumbly whoosh with blade wobble |
+| `crickets` | periodic chirping trills around 4 kHz |
+| `fire` | low crackling wood fire |
+| `hum` | low 100/104 Hz drone with a slow beat |
+
+All variants are synthesized in the same task loop against the speaker's own
+streaming buffer (a few filters / LFOs / sine states per sample — negligible
+at 16 kHz). Switch variants mid-playback with `noise.start`.
 
 ## Actions
 

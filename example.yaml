@@ -30,7 +30,7 @@ select:
   - platform: template
     id: noise_select
     name: "Noise"
-    options: ["Off", "White", "Pink", "Brown", "Gray"]
+    options: ["Off", "White", "Pink", "Brown", "Gray", "Waves", "Wind", "Rain", "Stream", "Fan", "Crickets", "Fire", "Hum"]
     initial_option: "Off"
 
 button:
