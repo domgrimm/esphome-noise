@@ -1,7 +1,7 @@
 # esphome-noise
 
 Procedural sleep-sound generator for ESPHome — white / pink / brown / gray
-noise plus on-device waves, wind, rain, stream and a box-fan hum.
+noise plus on-device waves, wind, stream and a box-fan hum.
 
 Hardware-agnostic: binds to any `speaker` platform (I2S DAC, amp chip, whatever)
 and automatically follows that speaker's configured sample rate and channel
@@ -75,7 +75,6 @@ can switch sounds live. See `example.yaml`.
 | `gray` | psychoacoustically flat hiss |
 | `waves` | ocean surf: brown noise under slow swell LFOs |
 | `wind` | low-pass filtered hiss with slowly drifting gusts |
-| `rain` | bright patter + sparse droplets |
 | `stream` | bubbling water: pink noise, slow irregular modulation |
 | `fan` | box-fan rumbly whoosh with blade wobble |
 

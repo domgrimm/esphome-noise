@@ -18,7 +18,6 @@ enum class NoiseVariant : uint8_t {
   GRAY,
   WAVES,
   WIND,
-  RAIN,
   STREAM,
   FAN,
 };
@@ -43,13 +42,6 @@ class NoiseComponent : public Component {
   void stop();
 
  protected:
-  struct Drop {
-    float phase{0.f};
-    float freq{1000.f};
-    float amp{0.f};
-    float decay{1.f};
-  };
-
   static void noise_task_(void *param);
   inline void task_loop_();
   void generate_chunk_(int16_t *samples, size_t frames);
@@ -58,7 +50,6 @@ class NoiseComponent : public Component {
   float y1_{0.f}, y2_{0.f}, y3_{0.f}, brown_{0.f};
   float lp_{0.f};
   float wind_target_{1.f}, wind_amp_{1.f};
-  Drop drops_[6];
   uint64_t time_smp_{0};
   bool running_{false};
   bool stop_req_{false};

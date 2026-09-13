@@ -28,15 +28,11 @@ void NoiseComponent::play(const std::string &variant) {
   this->y1_ = this->y2_ = this->y3_ = this->brown_ = this->lp_ = 0.f;
   this->wind_target_ = this->wind_amp_ = 1.f;
   this->time_smp_ = 0;
-  for (auto &d : this->drops_)
-    d.amp = 0.f;
 
   if (variant == "waves") {
     this->variant_ = NoiseVariant::WAVES;
   } else if (variant == "wind") {
     this->variant_ = NoiseVariant::WIND;
-  } else if (variant == "rain") {
-    this->variant_ = NoiseVariant::RAIN;
   } else if (variant == "stream") {
     this->variant_ = NoiseVariant::STREAM;
   } else if (variant == "fan") {
@@ -175,32 +171,6 @@ void NoiseComponent::generate_chunk_(int16_t *samples, size_t frames) {
         this->wind_amp_ += (this->wind_target_ - this->wind_amp_) * 0.002f;
         const float wob = 1.0f + 0.12f * std::sin(tau2pi * 0.33f * ft / rate);
         out = this->lp_ * this->wind_amp_ * wob * 1.9f;
-        break;
-      }
-      case NoiseVariant::RAIN: {
-        this->lp_ += (w - this->lp_) * 0.16f;
-        const float hp = w - this->lp_;
-        out = hp * 0.18f;
-        for (auto &d : this->drops_) {
-          if (d.amp > 0.001f) {
-            d.phase += tau2pi * d.freq / rate;
-            d.amp *= d.decay;
-            out += std::sin(d.phase) * d.amp;
-            if (d.amp <= 0.001f)
-              d.amp = 0.f;
-          }
-        }
-        if ((rng & 0xFFFF) < 98) {  // ~24 droplets/s
-          for (auto &d : this->drops_) {
-            if (d.amp <= 0.001f) {
-              d.phase = 0.f;
-              d.freq = 350.0f + 500.0f * rndf;
-              d.amp = 0.08f + 0.06f * rndf;
-              d.decay = std::exp(-1.0f / (rate * 0.045f));
-              break;
-            }
-          }
-        }
         break;
       }
       case NoiseVariant::STREAM: {
