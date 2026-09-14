@@ -37,6 +37,8 @@ void NoiseComponent::play(const std::string &variant) {
     this->variant_ = NoiseVariant::STREAM;
   } else if (variant == "fan") {
     this->variant_ = NoiseVariant::FAN;
+  } else if (variant == "beep") {
+    this->variant_ = NoiseVariant::BEEP;
   } else if (variant == "pink") {
     this->variant_ = NoiseVariant::PINK;
   } else if (variant == "brown") {
@@ -184,6 +186,24 @@ void NoiseComponent::generate_chunk_(int16_t *samples, size_t frames) {
         this->lp_ += (w - this->lp_) * 0.06f;
         const float wob = 0.85f + 0.15f * std::sin(tau2pi * 30.0f * ft / rate);
         out = this->lp_ * wob * 1.3f;
+        break;
+      }
+      case NoiseVariant::BEEP: {
+        // 880 + 1760 Hz double-harmonic, 400 ms beep every second with 4 ms
+        // fade-in/out so the burst doesn't click.
+        const float beat = std::fmod(ft, rate);
+        const float dur = 0.40f * rate;
+        float env = 1.0f;
+        const float fade = 0.004f * rate;
+        if (beat < fade)
+          env = beat / fade;
+        else if (beat > dur - fade)
+          env = (dur - beat) / fade;
+        if (beat < dur) {
+          out = (0.30f * std::sin(tau2pi * 880.0f * ft / rate) +
+                 0.08f * std::sin(tau2pi * 1760.0f * ft / rate)) *
+                env;
+        }
         break;
       }
     }

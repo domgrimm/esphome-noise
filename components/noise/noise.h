@@ -20,6 +20,7 @@ enum class NoiseVariant : uint8_t {
   WIND,
   STREAM,
   FAN,
+  BEEP,
 };
 
 /// Procedural noise generator.
