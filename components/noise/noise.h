@@ -41,16 +41,19 @@ class NoiseComponent : public Component {
 
   void play(const std::string &variant);
   void stop();
+  void set_select(select::Select *sel) { this->select_ = sel; }
 
  protected:
   static void noise_task_(void *param);
   inline void task_loop_();
   void generate_chunk_(int16_t *samples, size_t frames);
+  void finish_();
 
   uint32_t rng_{0x9E3779B9u};
   float y1_{0.f}, y2_{0.f}, y3_{0.f}, brown_{0.f};
   float lp_{0.f};
   float wind_target_{1.f}, wind_amp_{1.f};
+  uint32_t beep_len_{0};
   uint64_t time_smp_{0};
   bool running_{false};
   bool stop_req_{false};
@@ -60,6 +63,7 @@ class NoiseComponent : public Component {
   uint8_t channels_{1};
   std::vector<int16_t> pcm_;
   speaker::Speaker *speaker_{nullptr};
+  select::Select *select_{nullptr};
   static constexpr size_t FRAMES_PER_CHUNK = 1024;
 };
 

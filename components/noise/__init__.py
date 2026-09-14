@@ -47,6 +47,7 @@ async def to_code(config):
             options=["Off"] + [v.capitalize() for v in VARIANTS],
         )
         cg.add(select_var.set_parent(var))
+        cg.add(var.set_select(select_var))
         cg.add(select_var.publish_state("Off"))
 
 

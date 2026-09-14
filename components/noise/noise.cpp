@@ -60,6 +60,8 @@ void NoiseComponent::play(const std::string &variant) {
     this->speaker_->set_audio_stream_info(audio::AudioStreamInfo(16, this->channels_, rate));
   }
   this->rate_ = rate;
+  if (this->variant_ == NoiseVariant::BEEP)
+    this->beep_len_ = (uint32_t) (0.25f * rate);
   this->pcm_.resize(FRAMES_PER_CHUNK * this->channels_);
 
   if (!this->running_) {
@@ -81,6 +83,17 @@ void NoiseComponent::stop() {
   vTaskDelay(pdMS_TO_TICKS(30));
   this->speaker_->stop();
   ESP_LOGI(TAG, "Noise stopped");
+}
+
+void NoiseComponent::finish_() {
+  if (!this->running_)
+    return;
+  this->running_ = false;
+  this->stop_req_ = true;
+  this->speaker_->stop();
+  if (this->select_ != nullptr)
+    this->select_->publish_state("Off");
+  ESP_LOGI(TAG, "One-shot finished");
 }
 
 void NoiseSelect::control(const std::string &value) {
@@ -110,6 +123,10 @@ void NoiseComponent::task_loop_() {
     // Let the scheduler breathe: play() can return instantly when the ring
     // buffer has room, so yield explicitly or a tight spin trips the task WDT.
     vTaskDelay(pdMS_TO_TICKS(1));
+    if (this->variant_ == NoiseVariant::BEEP && this->time_smp_ >= this->beep_len_) {
+      this->finish_();
+      break;
+    }
   }
 }
 
@@ -189,19 +206,17 @@ void NoiseComponent::generate_chunk_(int16_t *samples, size_t frames) {
         break;
       }
       case NoiseVariant::BEEP: {
-        // 880 + 1760 Hz double-harmonic, 400 ms beep every second with 4 ms
-        // fade-in/out so the burst doesn't click.
-        const float beat = std::fmod(ft, rate);
-        const float dur = 0.40f * rate;
-        float env = 1.0f;
-        const float fade = 0.004f * rate;
-        if (beat < fade)
-          env = beat / fade;
-        else if (beat > dur - fade)
-          env = (dur - beat) / fade;
-        if (beat < dur) {
-          out = (0.30f * std::sin(tau2pi * 880.0f * ft / rate) +
-                 0.08f * std::sin(tau2pi * 1760.0f * ft / rate)) *
+        // Single loud beep ~880 (+1760) Hz, 250 ms, 4 ms fades — then silence.
+        if (t < this->beep_len_) {
+          const float dur = (float) this->beep_len_;
+          float env = 1.0f;
+          const float fade = 0.004f * rate;
+          if (ft < fade)
+            env = ft / fade;
+          else if (ft > dur - fade)
+            env = (dur - ft) / fade;
+          out = (0.42f * std::sin(tau2pi * 880.0f * ft / rate) +
+                 0.12f * std::sin(tau2pi * 1760.0f * ft / rate)) *
                 env;
         }
         break;

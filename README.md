@@ -77,7 +77,7 @@ can switch sounds live. See `example.yaml`.
 | `wind` | low-pass filtered hiss with slowly drifting gusts |
 | `stream` | bubbling water: pink noise, slow irregular modulation |
 | `fan` | box-fan rumbly whoosh with blade wobble |
-| `beep` | repeating 880 Hz alarm beep (400 ms on / second) — ideal for on-device alerts |
+| `beep` | single loud 880 Hz alert beep (~250 ms), one-shot — ideal for on-device alerts |
 
 All variants are synthesized in the same task loop against the speaker's own
 streaming buffer (a few filters / LFOs / sine states per sample — negligible
