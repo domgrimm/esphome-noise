@@ -57,8 +57,8 @@ void NoiseComponent::play(const std::string &variant) {
   }
   if (this->sample_rate_ > 0) {
     rate = this->sample_rate_;
-    this->speaker_->set_audio_stream_info(audio::AudioStreamInfo(16, this->channels_, rate));
   }
+  this->speaker_->set_audio_stream_info(audio::AudioStreamInfo(16, this->channels_, rate));
   this->rate_ = rate;
   if (this->variant_ == NoiseVariant::BEEP)
     this->beep_len_ = (uint32_t) (0.25f * rate);
