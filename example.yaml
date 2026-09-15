@@ -1,4 +1,4 @@
-# Generic example: any ESP32 + I2S speaker, auto "Noise" select + physical button.
+# Generic example: ESP32 + I2S speaker with full noise machine controls
 esphome:
   name: noise-demo
 
@@ -7,31 +7,63 @@ esp32:
   framework:
     type: esp-idf
 
+logger:
+
 external_components:
   - source: github://domgrimm/esphome-noise
     components: [noise]
 
 i2s_audio:
-  i2s_lrclk_pin: GPIO25
-  i2s_bclk_pin: GPIO26
+  - i2s_lrclk_pin: GPIO25
+    i2s_bclk_pin: GPIO26
 
 speaker:
-  platform: i2s_audio
-  id: i2s_audio_speaker
-  i2s_dout_pin: GPIO22
-  dac_type: external
+  - platform: i2s_audio
+    id: i2s_audio_speaker
+    i2s_dout_pin: GPIO22
+    dac_type: external
 
 noise:
   id: my_noise
   speaker: i2s_audio_speaker
+  # Optional overrides (default follows speaker):
+  # sample_rate: 16000
+  # channels: 2  # 1 = mono, 2 = stereo (with decorrelated spatial soundstage)
+  # fade_in_time: 150ms
+  # fade_out_time: 150ms
+
+  # Auto-created entities for Home Assistant:
   select:
     id: noise_select
-    name: Noise
+    name: "Noise Sound"
 
-# A physical button toggling the (auto-created) select — starts/stops noise.
+  media_player:
+    id: noise_player
+    name: "Noise Machine"
+
+  volume:
+    name: "Noise Volume"
+
+  tone:
+    name: "Noise Tone"
+
+  sleep_timer:
+    name: "Noise Sleep Timer"
+
+  # Optional automation triggers:
+  on_play:
+    - logger.log: "Noise playback started"
+  on_stop:
+    - logger.log: "Noise playback stopped"
+  on_variant_changed:
+    - logger.log:
+        format: "Sound profile changed to %s"
+        args: [ 'variant.c_str()' ]
+
+# Physical button toggling through noise profiles
 button:
   - platform: template
-    name: "Toggle Noise"
+    name: "Next Sound"
     on_press:
       - select.next:
           id: noise_select
