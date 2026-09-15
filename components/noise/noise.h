@@ -8,9 +8,19 @@
 #include "esphome/components/select/select.h"
 #include "esphome/components/speaker/speaker.h"
 
+#include "freertos/FreeRTOS.h"
+
 #include <cstdint>
 #include <string>
 #include <vector>
+
+#ifdef USE_NOISE_AIRPLAY
+#include "esp_err.h"
+namespace esphome::airplay_receiver {
+esp_err_t audio_output_write(const void *data, size_t bytes, TickType_t wait);
+bool audio_output_is_ready();
+}  // namespace esphome::airplay_receiver
+#endif
 
 namespace esphome::noise {
 
@@ -94,6 +104,20 @@ class NoiseComponent : public Component {
   void dump_config() override;
 
   void set_speaker(speaker::Speaker *speaker) { this->speaker_ = speaker; }
+  void set_airplay_receiver(media_player::MediaPlayer *ap) {
+    this->airplay_receiver_ = ap;
+    this->add_pause_source(ap);
+  }
+  void add_duck_source(media_player::MediaPlayer *player) {
+    this->duck_sources_.push_back(player);
+  }
+  void add_pause_source(media_player::MediaPlayer *player) {
+    this->pause_sources_.push_back(player);
+  }
+  void set_default_duck_level(float level) {
+    this->duck_level_ = clamp(level, 0.0f, 1.0f);
+  }
+
   void set_sample_rate(int sample_rate) { this->sample_rate_config_ = sample_rate; }
   void set_channels(uint8_t channels) { this->channels_config_ = channels; }
   void set_fade_in_time(uint32_t ms) { this->fade_in_time_ms_ = ms; }
@@ -139,8 +163,13 @@ class NoiseComponent : public Component {
   void task_loop_();
   void generate_chunk_(int16_t *samples, size_t frames);
   void finish_();
+  void on_external_player_state_changed_();
 
   speaker::Speaker *speaker_{nullptr};
+  media_player::MediaPlayer *airplay_receiver_{nullptr};
+  std::vector<media_player::MediaPlayer *> duck_sources_;
+  std::vector<media_player::MediaPlayer *> pause_sources_;
+
   select::Select *select_{nullptr};
   media_player::MediaPlayer *media_player_{nullptr};
   number::Number *volume_number_{nullptr};
@@ -167,6 +196,8 @@ class NoiseComponent : public Component {
   bool paused_{false};
   bool ducked_{false};
   bool muted_{false};
+  bool external_paused_{false};
+  bool external_ducked_{false};
 
   float current_gain_{0.0f};
 

@@ -2,7 +2,7 @@
 
 Procedural sleep-sound generator for ESPHome — 12 offline synthetic soundscapes including classic noise colors, natural environments, sleeping aids, and an on-device alert beep.
 
-Hardware-agnostic: binds to any `speaker` platform (I2S DAC, amp chip, internal DAC) and automatically adapts to that speaker's native sample rate and channels. No audio files, no network streaming, no flash storage needed — all sounds are synthesized directly on the ESP32 in real time.
+Hardware-agnostic: binds to any standard ESPHome `speaker` platform (I2S DAC, internal DAC, resampler, mixer) **or directly to an `esphome-airplay2` receiver**. No audio files, no network streaming, no flash storage needed — all sounds are synthesized directly on the ESP32 in real time.
 
 ---
 
@@ -10,15 +10,16 @@ Hardware-agnostic: binds to any `speaker` platform (I2S DAC, amp chip, internal 
 
 - **12 Sound Profiles**: White, Pink, Brown, Gray, Ocean Waves, Gusting Wind, Babbling Stream, Box Fan, Rain Shower, Campfire, Rhythmic Heartbeat, and Alert Beep.
 - **Pop-Free Playback**: Smooth sinusoidal/linear fade-in and fade-out envelopes eliminate clicks, pops, and sudden discontinuities on start, stop, pause, resume, and variant switching.
-- **True Spatial Stereo**: When running on stereo speakers (`channels: 2`), Left and Right channels use independent PRNG generators and decorrelated phase LFOs for a wide, immersive spatial soundstage.
+- **True Spatial Stereo**: When running on stereo speakers (`channels: 2` or AirPlay), Left and Right channels use independent PRNG generators and decorrelated phase LFOs for a wide, immersive spatial soundstage.
+- **AirPlay 2 Compatibility**: Direct output to [`henriklied/esphome-airplay2`](https://github.com/henriklied/esphome-airplay2) receivers without I2S pin conflicts. Automatically yields and pauses during AirPlay music streams, then smoothly resumes when music stops.
+- **Multi-Source Audio Coordination**: Automatically duck or pause background noise whenever other media players, announcements, or voice assistant pipelines on the device become active.
 - **Rich Home Assistant Entities**:
   - `select`: Sound selector (`Off`, `White`, `Pink`, ..., `Rain`, `Campfire`, `Heartbeat`).
   - `media_player`: Native Home Assistant media player card integration with Play, Pause, Stop, Volume slider, and Power controls.
   - `volume` (`number`): Independent volume control (0–100%) without altering speaker hardware master gain.
   - `tone` (`number`): Acoustic low-pass filter (0–100%) to dial in deep mellow warmth vs. crisp presence.
   - `sleep_timer` (`number`): Configurable auto-off timer (0–180 minutes).
-- **Voice Assistant Integration**: Built-in ducking (`noise.duck` / `noise.unduck`) and auto-pause (`noise.pause` / `noise.resume`) to temporarily lower noise level when wake words or TTS announcements occur.
-- **ESP32 Multicore Optimized**: Audio task is automatically pinned to Core 0 on dual-core chips, leaving Core 1 free for WiFi, ESPHome main loop, and microWakeWord detection.
+- **ESP32 Multicore Optimized**: Audio synthesis task is automatically pinned to Core 0 on dual-core chips, leaving Core 1 free for WiFi, ESPHome main loop, and microWakeWord detection.
 
 ---
 
@@ -34,16 +35,11 @@ external_components:
 
 ## Quick Start
 
+### Standard Speaker Setup
 ```yaml
 noise:
   id: my_noise
   speaker: i2s_audio_speaker
-
-  # Optional hardware overrides (default 0 = follow speaker settings):
-  # sample_rate: 16000
-  # channels: 2           # 1 = mono, 2 = true spatial stereo
-  # fade_in_time: 150ms   # smooth start ramp
-  # fade_out_time: 150ms  # smooth stop ramp
 
   # Optional Home Assistant Entities (any or all):
   select:
@@ -56,17 +52,58 @@ noise:
     name: "Noise Tone"
   sleep_timer:
     name: "Noise Sleep Timer"
-
-  # Optional Triggers:
-  on_play:
-    - logger.log: "Noise playback started"
-  on_stop:
-    - logger.log: "Noise playback stopped"
-  on_variant_changed:
-    - logger.log:
-        format: "Sound changed to %s"
-        args: [ 'variant.c_str()' ]
 ```
+
+### AirPlay 2 Receiver Setup
+Run both AirPlay 2 streaming and offline white noise on the same ESP32 board without hardware pin conflicts:
+
+```yaml
+external_components:
+  - source: github://henriklied/esphome-airplay2
+    components: [airplay_receiver]
+  - source: github://domgrimm/esphome-noise
+    components: [noise]
+
+# AirPlay receiver controls the hardware I2S pins:
+airplay_receiver:
+  id: airplay
+  name: "Living Room Speaker"
+  i2s_bclk_pin: 14
+  i2s_lrclk_pin: 15
+  i2s_dout_pin: 16
+
+# Noise component outputs directly through the AirPlay audio backend:
+noise:
+  id: my_noise
+  airplay_receiver: airplay
+  select:
+    name: "Noise Sound"
+  media_player:
+    name: "Noise Machine"
+```
+
+---
+
+## Multi-Source Audio Coordination
+
+When running background noise alongside announcements, TTS alerts, or other media players, `esphome-noise` can automatically coordinate volume levels without complex manual automations:
+
+```yaml
+noise:
+  speaker: hardware_speaker
+
+  # Automatically duck noise volume to 15% whenever any of these players are active:
+  duck_on_media_players:
+    - alert_player
+    - tts_player
+  duck_level: 15%
+
+  # Or automatically pause noise completely while a high-priority player streams:
+  pause_on_media_players:
+    - airplay
+```
+
+When an external player starts playing, `esphome-noise` smoothly ramps down. When all external sources return to idle/stop, noise smoothly ramps back up to its previous volume.
 
 ---
 
@@ -93,9 +130,13 @@ noise:
 
 | Option | Type | Default | Description |
 |---|---|---|---|
-| `speaker` | **Required**, ID | | The ID of the `speaker` component to output audio to. |
-| `sample_rate` | Optional, int | `0` | Sample rate in Hz. `0` follows the speaker's configured rate (e.g. 16000, 22050, 44100). |
-| `channels` | Optional, int | `0` | Audio channels. `0` follows speaker, `1` forces mono, `2` enables true spatial stereo decorrelation. |
+| `speaker` | Optional, ID | | The ID of the `speaker` component to output audio to. (Required unless `airplay_receiver` is set). |
+| `airplay_receiver` | Optional, ID | | The ID of an `airplay_receiver` component to output audio directly into the AirPlay 2 backend. |
+| `duck_on_media_players` | Optional, list of IDs | | Media players that trigger automatic noise ducking when active. |
+| `pause_on_media_players` | Optional, list of IDs | | Media players that trigger automatic noise pausing when active. |
+| `duck_level` | Optional, percentage | `20%` | Volume multiplier when ducked. |
+| `sample_rate` | Optional, int | `0` | Sample rate in Hz. `0` follows speaker/airplay rate (e.g. 16000, 44100). |
+| `channels` | Optional, int | `0` | Audio channels. `0` follows backend, `1` forces mono, `2` enables true spatial stereo decorrelation. |
 | `initial_volume` | Optional, percentage | `100%` | Initial internal playback gain (0%–100%). |
 | `fade_in_time` | Optional, time | `100ms` | Ramp-up duration when playback starts or resumes. |
 | `fade_out_time` | Optional, time | `100ms` | Ramp-down duration when playback stops or pauses. |
@@ -113,7 +154,7 @@ noise:
 ## Actions
 
 ### `noise.start`
-Starts noise playback. Accepts optional parameters:
+Starts noise playback:
 ```yaml
 - noise.start:
     id: my_noise
@@ -169,10 +210,12 @@ Adjusts the acoustic low-pass filter (0% = warm & deep rumble, 100% = crisp full
 
 ## Examples
 
-Check the [`examples/`](examples/) directory for ready-to-use configurations:
+Check the [`examples/`](examples/) directory for complete, verified configurations:
 
 - [**`example.yaml`**](example.yaml): General ESP32 + I2S speaker setup with all entities and a physical button.
-- [**`examples/bedside_sound_machine.yaml`**](examples/bedside_sound_machine.yaml): Complete sleep-aid machine with rotary encoder volume knob, profile button, and synchronized auto-dimming nightlight.
+- [**`examples/airplay_with_noise.yaml`**](examples/airplay_with_noise.yaml): **AirPlay 2 Receiver with Integrated Noise Generator** on the same ESP32 board without I2S pin conflicts and with automatic pause/resume coordination.
+- [**`examples/multi_source_audio_mixer.yaml`**](examples/multi_source_audio_mixer.yaml): **Multi-Source Audio** configuration with multi-instance noise, background ambient sound, and automatic ducking during alerts.
+- [**`examples/bedside_sound_machine.yaml`**](examples/bedside_sound_machine.yaml): Sleep-aid machine with rotary encoder volume knob, sound button, and synchronized auto-dimming nightlight.
 - [**`examples/voice_assistant_ducking.yaml`**](examples/voice_assistant_ducking.yaml): Voice assistant pipeline integration automatically ducking noise during wake word detection and speech.
 
 ---

@@ -146,11 +146,23 @@ void NoiseSleepTimerNumber::control(float value) {
 
 // Component setup and config dump
 void NoiseComponent::setup() {
-  if (this->speaker_ == nullptr) {
-    ESP_LOGE(TAG, "No speaker configured");
+  if (this->speaker_ == nullptr && this->airplay_receiver_ == nullptr) {
+    ESP_LOGE(TAG, "Neither speaker nor airplay_receiver configured");
     this->mark_failed();
     return;
   }
+
+  for (auto *player : this->duck_sources_) {
+    player->add_on_state_callback([this](media_player::MediaPlayerState) {
+      this->on_external_player_state_changed_();
+    });
+  }
+  for (auto *player : this->pause_sources_) {
+    player->add_on_state_callback([this](media_player::MediaPlayerState) {
+      this->on_external_player_state_changed_();
+    });
+  }
+
   if (this->volume_number_ != nullptr) {
     this->volume_number_->publish_state(this->volume_ * 100.0f);
   }
@@ -172,15 +184,64 @@ void NoiseComponent::setup() {
 
 void NoiseComponent::dump_config() {
   ESP_LOGCONFIG(TAG, "Noise generator:");
-  ESP_LOGCONFIG(TAG, "  Sample Rate: %s", this->sample_rate_config_ > 0 ? "override" : "speaker default");
+  if (this->speaker_ != nullptr) {
+    ESP_LOGCONFIG(TAG, "  Backend: Standard Speaker");
+  } else if (this->airplay_receiver_ != nullptr) {
+    ESP_LOGCONFIG(TAG, "  Backend: AirPlay 2 Receiver Direct I2S");
+  }
+  ESP_LOGCONFIG(TAG, "  Sample Rate: %s", this->sample_rate_config_ > 0 ? "override" : "default");
   ESP_LOGCONFIG(TAG, "  Channels: %s",
                 this->channels_config_ > 0 ? (this->channels_config_ == 2 ? "stereo override" : "mono override")
-                                           : "speaker default");
+                                           : "default");
   ESP_LOGCONFIG(TAG, "  Fade In: %u ms, Fade Out: %u ms", this->fade_in_time_ms_, this->fade_out_time_ms_);
   ESP_LOGCONFIG(TAG, "  Volume: %.0f%%", this->volume_ * 100.0f);
   ESP_LOGCONFIG(TAG, "  Tone: %.0f%%", this->tone_ * 100.0f);
   if (this->sleep_timer_minutes_ > 0.0f)
     ESP_LOGCONFIG(TAG, "  Sleep Timer: %.0f min", this->sleep_timer_minutes_);
+  if (!this->duck_sources_.empty())
+    ESP_LOGCONFIG(TAG, "  Multi-Source: %zu duck source(s) configured", this->duck_sources_.size());
+  if (!this->pause_sources_.empty())
+    ESP_LOGCONFIG(TAG, "  Multi-Source: %zu pause source(s) configured", this->pause_sources_.size());
+}
+
+void NoiseComponent::on_external_player_state_changed_() {
+  bool should_pause = false;
+  for (auto *p : this->pause_sources_) {
+    if (p != nullptr && (p->state == media_player::MEDIA_PLAYER_STATE_PLAYING ||
+                         p->state == media_player::MEDIA_PLAYER_STATE_ANNOUNCING)) {
+      should_pause = true;
+      break;
+    }
+  }
+
+  if (should_pause) {
+    if (this->running_ && !this->external_paused_) {
+      this->external_paused_ = true;
+      this->pause();
+    }
+    return;
+  } else if (this->external_paused_) {
+    this->external_paused_ = false;
+    this->resume();
+  }
+
+  bool should_duck = false;
+  for (auto *p : this->duck_sources_) {
+    if (p != nullptr && (p->state == media_player::MEDIA_PLAYER_STATE_PLAYING ||
+                         p->state == media_player::MEDIA_PLAYER_STATE_ANNOUNCING)) {
+      should_duck = true;
+      break;
+    }
+  }
+
+  if (should_duck != this->external_ducked_) {
+    this->external_ducked_ = should_duck;
+    if (should_duck) {
+      this->duck(this->duck_level_);
+    } else {
+      this->unduck();
+    }
+  }
 }
 
 void NoiseComponent::set_volume(float volume) {
@@ -299,9 +360,20 @@ void NoiseComponent::play(NoiseVariant variant, uint32_t duration_ms, optional<f
     return;
   }
 
-  auto info = this->speaker_->get_audio_stream_info();
-  uint32_t rate = info.get_sample_rate() ? info.get_sample_rate() : 16000;
-  uint8_t ch = info.get_channels() ? info.get_channels() : 1;
+  uint32_t rate = 16000;
+  uint8_t ch = 1;
+
+  if (this->speaker_ != nullptr) {
+    auto info = this->speaker_->get_audio_stream_info();
+    rate = info.get_sample_rate() ? info.get_sample_rate() : 16000;
+    ch = info.get_channels() ? info.get_channels() : 1;
+    if (info.get_bits_per_sample() != 0 && info.get_bits_per_sample() != 16) {
+      ESP_LOGW(TAG, "Speaker uses %u-bit samples; generating 16-bit", info.get_bits_per_sample());
+    }
+  } else if (this->airplay_receiver_ != nullptr) {
+    rate = 44100;
+    ch = 2;
+  }
 
   if (this->sample_rate_config_ > 0)
     rate = this->sample_rate_config_;
@@ -314,18 +386,16 @@ void NoiseComponent::play(NoiseVariant variant, uint32_t duration_ms, optional<f
   this->fade_in_samples_ = (this->fade_in_time_ms_ * this->rate_) / 1000;
   this->fade_out_samples_ = (this->fade_out_time_ms_ * this->rate_) / 1000;
 
-  if (info.get_bits_per_sample() != 0 && info.get_bits_per_sample() != 16) {
-    ESP_LOGW(TAG, "Speaker uses %u-bit samples; generating 16-bit", info.get_bits_per_sample());
+  if (this->speaker_ != nullptr) {
+    this->speaker_->set_audio_stream_info(audio::AudioStreamInfo(16, this->channels_, this->rate_));
+    this->speaker_->start();
   }
 
-  this->speaker_->set_audio_stream_info(audio::AudioStreamInfo(16, this->channels_, this->rate_));
   this->pcm_.resize(FRAMES_PER_CHUNK * this->channels_);
 
   this->current_gain_ = 0.0f;
   this->stop_req_ = false;
   this->running_ = true;
-
-  this->speaker_->start();
 
 #if defined(USE_ESP32) && !defined(CONFIG_FREERTOS_UNICORE)
   xTaskCreatePinnedToCore(&NoiseComponent::noise_task_, "noise", 4096, this, 2,
@@ -385,8 +455,19 @@ void NoiseComponent::noise_task_(void *param) {
 void NoiseComponent::task_loop_() {
   while (true) {
     this->generate_chunk_(this->pcm_.data(), FRAMES_PER_CHUNK);
-    this->speaker_->play(reinterpret_cast<uint8_t *>(this->pcm_.data()),
-                         this->pcm_.size() * sizeof(int16_t), pdMS_TO_TICKS(20));
+
+#ifdef USE_NOISE_AIRPLAY
+    if (this->airplay_receiver_ != nullptr) {
+      if (!this->external_paused_) {
+        esphome::airplay_receiver::audio_output_write(
+            this->pcm_.data(), this->pcm_.size() * sizeof(int16_t), pdMS_TO_TICKS(20));
+      }
+    } else
+#endif
+    if (this->speaker_ != nullptr) {
+      this->speaker_->play(reinterpret_cast<uint8_t *>(this->pcm_.data()),
+                           this->pcm_.size() * sizeof(int16_t), pdMS_TO_TICKS(20));
+    }
 
     // If stop requested and faded down to silence: exit task loop cleanly
     if (this->stop_req_ && this->current_gain_ <= 0.0001f) {
@@ -408,7 +489,9 @@ void NoiseComponent::task_loop_() {
     vTaskDelay(pdMS_TO_TICKS(1));
   }
 
-  this->speaker_->stop();
+  if (this->speaker_ != nullptr) {
+    this->speaker_->stop();
+  }
   this->running_ = false;
   this->stop_req_ = false;
 }

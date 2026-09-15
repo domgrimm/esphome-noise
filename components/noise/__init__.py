@@ -15,8 +15,8 @@ from esphome.const import (
     CONF_VOLUME,
 )
 
-DEPENDENCIES = ["speaker"]
 AUTO_LOAD = ["select", "media_player", "number"]
+MULTI_CONF = True
 
 noise_ns = cg.esphome_ns.namespace("noise")
 NoiseComponent = noise_ns.class_("NoiseComponent", cg.Component)
@@ -50,6 +50,11 @@ VARIANTS = [
     "beep",
 ]
 
+CONF_AIRPLAY_RECEIVER = "airplay_receiver"
+CONF_DUCK_ON_MEDIA_PLAYERS = "duck_on_media_players"
+CONF_PAUSE_ON_MEDIA_PLAYERS = "pause_on_media_players"
+CONF_DUCK_LEVEL = "duck_level"
+
 CONF_SELECT = "select"
 CONF_TONE = "tone"
 CONF_SLEEP_TIMER = "sleep_timer"
@@ -78,46 +83,56 @@ _CALLBACK_AUTOMATIONS = (
     ),
 )
 
-CONFIG_SCHEMA = cv.Schema(
-    {
-        cv.GenerateID(): cv.declare_id(NoiseComponent),
-        cv.Required(CONF_SPEAKER): cv.use_id(speaker.Speaker),
-        # 0 (default) = follow speaker's sample rate.
-        cv.Optional(CONF_SAMPLE_RATE, default=0): cv.int_range(min=0, max=48000),
-        # 0 (default) = follow speaker's channel count, 1 = mono, 2 = stereo.
-        cv.Optional(CONF_CHANNELS, default=0): cv.int_range(min=0, max=2),
-        cv.Optional(CONF_INITIAL_VOLUME, default="100%"): cv.percentage,
-        cv.Optional(CONF_FADE_IN_TIME, default="100ms"): cv.positive_time_period_milliseconds,
-        cv.Optional(CONF_FADE_OUT_TIME, default="100ms"): cv.positive_time_period_milliseconds,
-        cv.Optional(CONF_SELECT): select.select_schema(
-            NoiseSelect,
-            entity_category=cv.UNDEFINED,
-            icon="mdi:white-balance-sunny",
-        ),
-        cv.Optional(CONF_MEDIA_PLAYER): media_player.media_player_schema(
-            NoiseMediaPlayer,
-            icon="mdi:speaker-play",
-        ),
-        cv.Optional(CONF_VOLUME): number.number_schema(
-            NoiseVolumeNumber,
-            icon="mdi:volume-high",
-            unit_of_measurement="%",
-        ),
-        cv.Optional(CONF_TONE): number.number_schema(
-            NoiseToneNumber,
-            icon="mdi:tune",
-            unit_of_measurement="%",
-        ),
-        cv.Optional(CONF_SLEEP_TIMER): number.number_schema(
-            NoiseSleepTimerNumber,
-            icon="mdi:timer-outline",
-            unit_of_measurement="min",
-        ),
-        cv.Optional(CONF_ON_PLAY): automation.validate_automation(automation.AUTOMATION_SCHEMA),
-        cv.Optional(CONF_ON_STOP): automation.validate_automation(automation.AUTOMATION_SCHEMA),
-        cv.Optional(CONF_ON_VARIANT_CHANGED): automation.validate_automation(automation.AUTOMATION_SCHEMA),
-    }
-).extend(cv.COMPONENT_SCHEMA)
+CONFIG_SCHEMA = cv.All(
+    cv.Schema(
+        {
+            cv.GenerateID(): cv.declare_id(NoiseComponent),
+            cv.Optional(CONF_SPEAKER): cv.use_id(speaker.Speaker),
+            # Direct output to an AirPlay 2 receiver (esphome-airplay2)
+            cv.Optional(CONF_AIRPLAY_RECEIVER): cv.use_id(media_player.MediaPlayer),
+            # Multi-source audio: automatically duck noise when other media players play
+            cv.Optional(CONF_DUCK_ON_MEDIA_PLAYERS): cv.ensure_list(cv.use_id(media_player.MediaPlayer)),
+            # Multi-source audio: automatically pause noise when other media players play
+            cv.Optional(CONF_PAUSE_ON_MEDIA_PLAYERS): cv.ensure_list(cv.use_id(media_player.MediaPlayer)),
+            cv.Optional(CONF_DUCK_LEVEL, default="20%"): cv.percentage,
+            # 0 (default) = follow speaker/airplay sample rate.
+            cv.Optional(CONF_SAMPLE_RATE, default=0): cv.int_range(min=0, max=48000),
+            # 0 (default) = follow speaker/airplay channels, 1 = mono, 2 = stereo.
+            cv.Optional(CONF_CHANNELS, default=0): cv.int_range(min=0, max=2),
+            cv.Optional(CONF_INITIAL_VOLUME, default="100%"): cv.percentage,
+            cv.Optional(CONF_FADE_IN_TIME, default="100ms"): cv.positive_time_period_milliseconds,
+            cv.Optional(CONF_FADE_OUT_TIME, default="100ms"): cv.positive_time_period_milliseconds,
+            cv.Optional(CONF_SELECT): select.select_schema(
+                NoiseSelect,
+                entity_category=cv.UNDEFINED,
+                icon="mdi:white-balance-sunny",
+            ),
+            cv.Optional(CONF_MEDIA_PLAYER): media_player.media_player_schema(
+                NoiseMediaPlayer,
+                icon="mdi:speaker-play",
+            ),
+            cv.Optional(CONF_VOLUME): number.number_schema(
+                NoiseVolumeNumber,
+                icon="mdi:volume-high",
+                unit_of_measurement="%",
+            ),
+            cv.Optional(CONF_TONE): number.number_schema(
+                NoiseToneNumber,
+                icon="mdi:tune",
+                unit_of_measurement="%",
+            ),
+            cv.Optional(CONF_SLEEP_TIMER): number.number_schema(
+                NoiseSleepTimerNumber,
+                icon="mdi:timer-outline",
+                unit_of_measurement="min",
+            ),
+            cv.Optional(CONF_ON_PLAY): automation.validate_automation(automation.AUTOMATION_SCHEMA),
+            cv.Optional(CONF_ON_STOP): automation.validate_automation(automation.AUTOMATION_SCHEMA),
+            cv.Optional(CONF_ON_VARIANT_CHANGED): automation.validate_automation(automation.AUTOMATION_SCHEMA),
+        }
+    ).extend(cv.COMPONENT_SCHEMA),
+    cv.has_at_least_one_key(CONF_SPEAKER, CONF_AIRPLAY_RECEIVER),
+)
 
 
 async def to_code(config):
@@ -128,9 +143,26 @@ async def to_code(config):
     cg.add(var.set_volume(config[CONF_INITIAL_VOLUME]))
     cg.add(var.set_fade_in_time(config[CONF_FADE_IN_TIME]))
     cg.add(var.set_fade_out_time(config[CONF_FADE_OUT_TIME]))
+    cg.add(var.set_default_duck_level(config[CONF_DUCK_LEVEL]))
 
-    speaker_var = await cg.get_variable(config[CONF_SPEAKER])
-    cg.add(var.set_speaker(speaker_var))
+    if CONF_SPEAKER in config:
+        speaker_var = await cg.get_variable(config[CONF_SPEAKER])
+        cg.add(var.set_speaker(speaker_var))
+
+    if CONF_AIRPLAY_RECEIVER in config:
+        cg.add_define("USE_NOISE_AIRPLAY")
+        ap_var = await cg.get_variable(config[CONF_AIRPLAY_RECEIVER])
+        cg.add(var.set_airplay_receiver(ap_var))
+
+    if CONF_DUCK_ON_MEDIA_PLAYERS in config:
+        for player_id in config[CONF_DUCK_ON_MEDIA_PLAYERS]:
+            p_var = await cg.get_variable(player_id)
+            cg.add(var.add_duck_source(p_var))
+
+    if CONF_PAUSE_ON_MEDIA_PLAYERS in config:
+        for player_id in config[CONF_PAUSE_ON_MEDIA_PLAYERS]:
+            p_var = await cg.get_variable(player_id)
+            cg.add(var.add_pause_source(p_var))
 
     if CONF_SELECT in config:
         select_var = await select.new_select(

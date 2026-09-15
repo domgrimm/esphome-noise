@@ -1,0 +1,62 @@
+# Multi-Source Audio Mixing & Automatic Ducking Example
+#
+# Demonstrates:
+# - Running background sleep sounds alongside TTS, alerts, or media players
+# - Automatic ducking: background noise drops in volume whenever another audio source plays
+# - Automatic pause: background noise pauses whenever a high-priority player is active
+# - Smooth, click-free audio ramping during all transitions
+
+esphome:
+  name: multi-source-speaker
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+
+logger:
+
+external_components:
+  - source: github://domgrimm/esphome-noise
+    components: [noise]
+
+i2s_audio:
+  - i2s_lrclk_pin: GPIO25
+    i2s_bclk_pin: GPIO26
+
+speaker:
+  - platform: i2s_audio
+    id: hardware_speaker
+    i2s_dout_pin: GPIO22
+    dac_type: external
+
+# Example: Two noise components on one device (e.g. ambient bed + alert beeps),
+# or a media player coordinated with noise
+noise:
+  # High-priority alert / notification sound player
+  - id: alert_noise
+    speaker: hardware_speaker
+    media_player:
+      id: alert_player
+      name: "Alert Audio Player"
+
+  # Continuous ambient noise machine with automatic ducking
+  - id: background_noise
+    speaker: hardware_speaker
+    # Multi-source coordination:
+    duck_on_media_players:
+      - alert_player
+    duck_level: 15%      # Duck to 15% volume when alert_player is playing
+    fade_in_time: 200ms
+    fade_out_time: 200ms
+
+    select:
+      name: "Background Noise Sound"
+    media_player:
+      name: "Background Noise Player"
+    volume:
+      name: "Background Noise Volume"
+    tone:
+      name: "Background Noise Tone"
+    sleep_timer:
+      name: "Background Noise Sleep Timer"
