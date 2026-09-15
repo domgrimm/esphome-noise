@@ -3,9 +3,15 @@
 #include "esphome/core/component.h"
 #include "esphome/core/automation.h"
 #include "esphome/core/helpers.h"
+#ifdef USE_MEDIA_PLAYER
 #include "esphome/components/media_player/media_player.h"
+#endif
+#ifdef USE_NUMBER
 #include "esphome/components/number/number.h"
+#endif
+#ifdef USE_SELECT
 #include "esphome/components/select/select.h"
+#endif
 #include "esphome/components/speaker/speaker.h"
 
 #include "freertos/FreeRTOS.h"
@@ -44,6 +50,7 @@ optional<NoiseVariant> string_to_noise_variant(const std::string &name);
 
 class NoiseComponent;
 
+#ifdef USE_SELECT
 /// Select entity for choosing noise profiles and Off
 class NoiseSelect : public select::Select {
  public:
@@ -53,7 +60,9 @@ class NoiseSelect : public select::Select {
  protected:
   NoiseComponent *parent_{nullptr};
 };
+#endif
 
+#ifdef USE_MEDIA_PLAYER
 /// Media player entity for full HA media controls (Play/Pause/Stop/Volume)
 class NoiseMediaPlayer : public media_player::MediaPlayer {
  public:
@@ -65,7 +74,9 @@ class NoiseMediaPlayer : public media_player::MediaPlayer {
  protected:
   NoiseComponent *parent_{nullptr};
 };
+#endif
 
+#ifdef USE_NUMBER
 /// Volume number entity (0-100%)
 class NoiseVolumeNumber : public number::Number {
  public:
@@ -95,6 +106,7 @@ class NoiseSleepTimerNumber : public number::Number {
  protected:
   NoiseComponent *parent_{nullptr};
 };
+#endif
 
 /// Procedural noise generator
 class NoiseComponent : public Component {
@@ -104,6 +116,7 @@ class NoiseComponent : public Component {
   void dump_config() override;
 
   void set_speaker(speaker::Speaker *speaker) { this->speaker_ = speaker; }
+#ifdef USE_MEDIA_PLAYER
   void set_airplay_receiver(media_player::MediaPlayer *ap) {
     this->airplay_receiver_ = ap;
     this->add_pause_source(ap);
@@ -114,6 +127,7 @@ class NoiseComponent : public Component {
   void add_pause_source(media_player::MediaPlayer *player) {
     this->pause_sources_.push_back(player);
   }
+#endif
   void set_default_duck_level(float level) {
     this->duck_level_ = clamp(level, 0.0f, 1.0f);
   }
@@ -123,11 +137,17 @@ class NoiseComponent : public Component {
   void set_fade_in_time(uint32_t ms) { this->fade_in_time_ms_ = ms; }
   void set_fade_out_time(uint32_t ms) { this->fade_out_time_ms_ = ms; }
 
+#ifdef USE_SELECT
   void set_select(select::Select *sel) { this->select_ = sel; }
+#endif
+#ifdef USE_MEDIA_PLAYER
   void set_media_player(media_player::MediaPlayer *mp) { this->media_player_ = mp; }
+#endif
+#ifdef USE_NUMBER
   void set_volume_number(number::Number *num) { this->volume_number_ = num; }
   void set_tone_number(number::Number *num) { this->tone_number_ = num; }
   void set_sleep_timer_number(number::Number *num) { this->sleep_timer_number_ = num; }
+#endif
 
   void play(const std::string &variant, uint32_t duration_ms = 0, optional<float> volume = {});
   void play(NoiseVariant variant, uint32_t duration_ms = 0, optional<float> volume = {});
@@ -163,18 +183,28 @@ class NoiseComponent : public Component {
   void task_loop_();
   void generate_chunk_(int16_t *samples, size_t frames);
   void finish_();
+#ifdef USE_MEDIA_PLAYER
   void on_external_player_state_changed_();
+#endif
 
   speaker::Speaker *speaker_{nullptr};
+#ifdef USE_MEDIA_PLAYER
   media_player::MediaPlayer *airplay_receiver_{nullptr};
   std::vector<media_player::MediaPlayer *> duck_sources_;
   std::vector<media_player::MediaPlayer *> pause_sources_;
+#endif
 
+#ifdef USE_SELECT
   select::Select *select_{nullptr};
+#endif
+#ifdef USE_MEDIA_PLAYER
   media_player::MediaPlayer *media_player_{nullptr};
+#endif
+#ifdef USE_NUMBER
   number::Number *volume_number_{nullptr};
   number::Number *tone_number_{nullptr};
   number::Number *sleep_timer_number_{nullptr};
+#endif
 
   int sample_rate_config_{0};
   uint8_t channels_config_{0};

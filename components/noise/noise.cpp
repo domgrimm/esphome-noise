@@ -51,6 +51,7 @@ optional<NoiseVariant> string_to_noise_variant(const std::string &name) {
   return {};
 }
 
+#ifdef USE_SELECT
 // Select entity
 void NoiseSelect::control(const std::string &value) {
   if (value == "Off") {
@@ -63,7 +64,9 @@ void NoiseSelect::control(const std::string &value) {
   }
   this->publish_state(value);
 }
+#endif
 
+#ifdef USE_MEDIA_PLAYER
 // Media player entity
 media_player::MediaPlayerTraits NoiseMediaPlayer::get_traits() {
   auto traits = media_player::MediaPlayerTraits();
@@ -124,7 +127,9 @@ void NoiseMediaPlayer::control(const media_player::MediaPlayerCall &call) {
 bool NoiseMediaPlayer::is_muted() const {
   return this->parent_ != nullptr && this->parent_->is_muted();
 }
+#endif
 
+#ifdef USE_NUMBER
 // Number entities
 void NoiseVolumeNumber::control(float value) {
   this->publish_state(value);
@@ -143,15 +148,22 @@ void NoiseSleepTimerNumber::control(float value) {
   if (this->parent_ != nullptr)
     this->parent_->set_sleep_timer(value);
 }
+#endif
 
 // Component setup and config dump
 void NoiseComponent::setup() {
+#if defined(USE_NOISE_AIRPLAY) && defined(USE_MEDIA_PLAYER)
   if (this->speaker_ == nullptr && this->airplay_receiver_ == nullptr) {
     ESP_LOGE(TAG, "Neither speaker nor airplay_receiver configured");
+#else
+  if (this->speaker_ == nullptr) {
+    ESP_LOGE(TAG, "Speaker not configured");
+#endif
     this->mark_failed();
     return;
   }
 
+#ifdef USE_MEDIA_PLAYER
   for (auto *player : this->duck_sources_) {
     player->add_on_state_callback([this](media_player::MediaPlayerState) {
       this->on_external_player_state_changed_();
@@ -162,7 +174,9 @@ void NoiseComponent::setup() {
       this->on_external_player_state_changed_();
     });
   }
+#endif
 
+#ifdef USE_NUMBER
   if (this->volume_number_ != nullptr) {
     this->volume_number_->publish_state(this->volume_ * 100.0f);
   }
@@ -172,38 +186,49 @@ void NoiseComponent::setup() {
   if (this->sleep_timer_number_ != nullptr) {
     this->sleep_timer_number_->publish_state(this->sleep_timer_minutes_);
   }
+#endif
+#ifdef USE_SELECT
   if (this->select_ != nullptr) {
     this->select_->publish_state("Off");
   }
+#endif
+#ifdef USE_MEDIA_PLAYER
   if (this->media_player_ != nullptr) {
     this->media_player_->state = media_player::MEDIA_PLAYER_STATE_IDLE;
     this->media_player_->volume = this->volume_;
     this->media_player_->publish_state();
   }
+#endif
 }
 
 void NoiseComponent::dump_config() {
   ESP_LOGCONFIG(TAG, "Noise generator:");
   if (this->speaker_ != nullptr) {
     ESP_LOGCONFIG(TAG, "  Backend: Standard Speaker");
+#if defined(USE_NOISE_AIRPLAY) && defined(USE_MEDIA_PLAYER)
   } else if (this->airplay_receiver_ != nullptr) {
     ESP_LOGCONFIG(TAG, "  Backend: AirPlay 2 Receiver Direct I2S");
+#endif
   }
   ESP_LOGCONFIG(TAG, "  Sample Rate: %s", this->sample_rate_config_ > 0 ? "override" : "default");
   ESP_LOGCONFIG(TAG, "  Channels: %s",
                 this->channels_config_ > 0 ? (this->channels_config_ == 2 ? "stereo override" : "mono override")
                                            : "default");
-  ESP_LOGCONFIG(TAG, "  Fade In: %u ms, Fade Out: %u ms", this->fade_in_time_ms_, this->fade_out_time_ms_);
+  ESP_LOGCONFIG(TAG, "  Fade In: %u ms, Fade Out: %u ms", (unsigned) this->fade_in_time_ms_,
+                (unsigned) this->fade_out_time_ms_);
   ESP_LOGCONFIG(TAG, "  Volume: %.0f%%", this->volume_ * 100.0f);
   ESP_LOGCONFIG(TAG, "  Tone: %.0f%%", this->tone_ * 100.0f);
   if (this->sleep_timer_minutes_ > 0.0f)
     ESP_LOGCONFIG(TAG, "  Sleep Timer: %.0f min", this->sleep_timer_minutes_);
+#ifdef USE_MEDIA_PLAYER
   if (!this->duck_sources_.empty())
     ESP_LOGCONFIG(TAG, "  Multi-Source: %zu duck source(s) configured", this->duck_sources_.size());
   if (!this->pause_sources_.empty())
     ESP_LOGCONFIG(TAG, "  Multi-Source: %zu pause source(s) configured", this->pause_sources_.size());
+#endif
 }
 
+#ifdef USE_MEDIA_PLAYER
 void NoiseComponent::on_external_player_state_changed_() {
   bool should_pause = false;
   for (auto *p : this->pause_sources_) {
@@ -243,30 +268,39 @@ void NoiseComponent::on_external_player_state_changed_() {
     }
   }
 }
+#endif
 
 void NoiseComponent::set_volume(float volume) {
   this->volume_ = clamp(volume, 0.0f, 1.0f);
+#ifdef USE_NUMBER
   if (this->volume_number_ != nullptr && this->volume_number_->state != this->volume_ * 100.0f) {
     this->volume_number_->publish_state(this->volume_ * 100.0f);
   }
+#endif
+#ifdef USE_MEDIA_PLAYER
   if (this->media_player_ != nullptr && this->media_player_->volume != this->volume_) {
     this->media_player_->volume = this->volume_;
     this->media_player_->publish_state();
   }
+#endif
 }
 
 void NoiseComponent::set_tone(float tone) {
   this->tone_ = clamp(tone, 0.0f, 1.0f);
+#ifdef USE_NUMBER
   if (this->tone_number_ != nullptr && this->tone_number_->state != this->tone_ * 100.0f) {
     this->tone_number_->publish_state(this->tone_ * 100.0f);
   }
+#endif
 }
 
 void NoiseComponent::set_sleep_timer(float minutes) {
   this->sleep_timer_minutes_ = std::max(0.0f, minutes);
+#ifdef USE_NUMBER
   if (this->sleep_timer_number_ != nullptr && this->sleep_timer_number_->state != this->sleep_timer_minutes_) {
     this->sleep_timer_number_->publish_state(this->sleep_timer_minutes_);
   }
+#endif
 }
 
 void NoiseComponent::duck(float level) {
@@ -282,18 +316,22 @@ void NoiseComponent::unduck() {
 
 void NoiseComponent::set_muted(bool muted) {
   this->muted_ = muted;
+#ifdef USE_MEDIA_PLAYER
   if (this->media_player_ != nullptr)
     this->media_player_->publish_state();
+#endif
 }
 
 void NoiseComponent::pause() {
   if (!this->running_ || this->paused_)
     return;
   this->paused_ = true;
+#ifdef USE_MEDIA_PLAYER
   if (this->media_player_ != nullptr) {
     this->media_player_->state = media_player::MEDIA_PLAYER_STATE_PAUSED;
     this->media_player_->publish_state();
   }
+#endif
   ESP_LOGI(TAG, "Noise paused");
 }
 
@@ -304,10 +342,12 @@ void NoiseComponent::resume() {
   }
   if (this->paused_) {
     this->paused_ = false;
+#ifdef USE_MEDIA_PLAYER
     if (this->media_player_ != nullptr) {
       this->media_player_->state = media_player::MEDIA_PLAYER_STATE_PLAYING;
       this->media_player_->publish_state();
     }
+#endif
     ESP_LOGI(TAG, "Noise resumed");
   }
 }
@@ -350,12 +390,16 @@ void NoiseComponent::play(NoiseVariant variant, uint32_t duration_ms, optional<f
   if (this->running_) {
     this->stop_req_ = false;
     ESP_LOGI(TAG, "Switched noise to %s", this->last_variant_.c_str());
+#ifdef USE_SELECT
     if (this->select_ != nullptr)
       this->select_->publish_state(this->last_variant_);
+#endif
+#ifdef USE_MEDIA_PLAYER
     if (this->media_player_ != nullptr) {
       this->media_player_->state = media_player::MEDIA_PLAYER_STATE_PLAYING;
       this->media_player_->publish_state();
     }
+#endif
     this->variant_changed_callback_.call(this->last_variant_);
     return;
   }
@@ -370,9 +414,11 @@ void NoiseComponent::play(NoiseVariant variant, uint32_t duration_ms, optional<f
     if (info.get_bits_per_sample() != 0 && info.get_bits_per_sample() != 16) {
       ESP_LOGW(TAG, "Speaker uses %u-bit samples; generating 16-bit", info.get_bits_per_sample());
     }
+#if defined(USE_NOISE_AIRPLAY) && defined(USE_MEDIA_PLAYER)
   } else if (this->airplay_receiver_ != nullptr) {
     rate = 44100;
     ch = 2;
+#endif
   }
 
   if (this->sample_rate_config_ > 0)
@@ -407,12 +453,16 @@ void NoiseComponent::play(NoiseVariant variant, uint32_t duration_ms, optional<f
 
   ESP_LOGI(TAG, "Playing %s noise (%u Hz, %u ch)", this->last_variant_.c_str(), (unsigned) this->rate_, this->channels_);
 
+#ifdef USE_SELECT
   if (this->select_ != nullptr)
     this->select_->publish_state(this->last_variant_);
+#endif
+#ifdef USE_MEDIA_PLAYER
   if (this->media_player_ != nullptr) {
     this->media_player_->state = media_player::MEDIA_PLAYER_STATE_PLAYING;
     this->media_player_->publish_state();
   }
+#endif
   this->play_callback_.call();
   this->variant_changed_callback_.call(this->last_variant_);
 }
@@ -422,24 +472,32 @@ void NoiseComponent::stop() {
     return;
   this->stop_req_ = true;
   this->paused_ = false;
+#ifdef USE_SELECT
   if (this->select_ != nullptr)
     this->select_->publish_state("Off");
+#endif
+#ifdef USE_MEDIA_PLAYER
   if (this->media_player_ != nullptr) {
     this->media_player_->state = media_player::MEDIA_PLAYER_STATE_IDLE;
     this->media_player_->publish_state();
   }
+#endif
   this->stop_callback_.call();
   ESP_LOGI(TAG, "Noise stopping (fade-out initiated)");
 }
 
 void NoiseComponent::finish_() {
   this->defer([this]() {
+#ifdef USE_SELECT
     if (this->select_ != nullptr)
       this->select_->publish_state("Off");
+#endif
+#ifdef USE_MEDIA_PLAYER
     if (this->media_player_ != nullptr) {
       this->media_player_->state = media_player::MEDIA_PLAYER_STATE_IDLE;
       this->media_player_->publish_state();
     }
+#endif
     this->stop_callback_.call();
   });
   ESP_LOGI(TAG, "Playback completed");

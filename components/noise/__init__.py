@@ -15,7 +15,29 @@ from esphome.const import (
     CONF_VOLUME,
 )
 
-AUTO_LOAD = ["select", "media_player", "number"]
+def AUTO_LOAD(config):
+    configs = config if isinstance(config, list) else [config]
+    loads = set()
+    for conf in configs:
+        if not isinstance(conf, dict):
+            continue
+        if CONF_SELECT in conf:
+            loads.add("select")
+        if (
+            CONF_MEDIA_PLAYER in conf
+            or CONF_AIRPLAY_RECEIVER in conf
+            or CONF_DUCK_ON_MEDIA_PLAYERS in conf
+            or CONF_PAUSE_ON_MEDIA_PLAYERS in conf
+        ):
+            loads.add("media_player")
+        if (
+            CONF_VOLUME in conf
+            or CONF_TONE in conf
+            or CONF_SLEEP_TIMER in conf
+        ):
+            loads.add("number")
+    return list(loads)
+
 MULTI_CONF = True
 
 noise_ns = cg.esphome_ns.namespace("noise")
@@ -88,16 +110,11 @@ CONFIG_SCHEMA = cv.All(
         {
             cv.GenerateID(): cv.declare_id(NoiseComponent),
             cv.Optional(CONF_SPEAKER): cv.use_id(speaker.Speaker),
-            # Direct output to an AirPlay 2 receiver (esphome-airplay2)
             cv.Optional(CONF_AIRPLAY_RECEIVER): cv.use_id(media_player.MediaPlayer),
-            # Multi-source audio: automatically duck noise when other media players play
             cv.Optional(CONF_DUCK_ON_MEDIA_PLAYERS): cv.ensure_list(cv.use_id(media_player.MediaPlayer)),
-            # Multi-source audio: automatically pause noise when other media players play
             cv.Optional(CONF_PAUSE_ON_MEDIA_PLAYERS): cv.ensure_list(cv.use_id(media_player.MediaPlayer)),
             cv.Optional(CONF_DUCK_LEVEL, default="20%"): cv.percentage,
-            # 0 (default) = follow speaker/airplay sample rate.
             cv.Optional(CONF_SAMPLE_RATE, default=0): cv.int_range(min=0, max=48000),
-            # 0 (default) = follow speaker/airplay channels, 1 = mono, 2 = stereo.
             cv.Optional(CONF_CHANNELS, default=0): cv.int_range(min=0, max=2),
             cv.Optional(CONF_INITIAL_VOLUME, default="100%"): cv.percentage,
             cv.Optional(CONF_FADE_IN_TIME, default="100ms"): cv.positive_time_period_milliseconds,
@@ -151,20 +168,24 @@ async def to_code(config):
 
     if CONF_AIRPLAY_RECEIVER in config:
         cg.add_define("USE_NOISE_AIRPLAY")
+        cg.add_define("USE_MEDIA_PLAYER")
         ap_var = await cg.get_variable(config[CONF_AIRPLAY_RECEIVER])
         cg.add(var.set_airplay_receiver(ap_var))
 
     if CONF_DUCK_ON_MEDIA_PLAYERS in config:
+        cg.add_define("USE_MEDIA_PLAYER")
         for player_id in config[CONF_DUCK_ON_MEDIA_PLAYERS]:
             p_var = await cg.get_variable(player_id)
             cg.add(var.add_duck_source(p_var))
 
     if CONF_PAUSE_ON_MEDIA_PLAYERS in config:
+        cg.add_define("USE_MEDIA_PLAYER")
         for player_id in config[CONF_PAUSE_ON_MEDIA_PLAYERS]:
             p_var = await cg.get_variable(player_id)
             cg.add(var.add_pause_source(p_var))
 
     if CONF_SELECT in config:
+        cg.add_define("USE_SELECT")
         select_var = await select.new_select(
             config[CONF_SELECT],
             options=["Off"] + [v.capitalize() for v in VARIANTS],
@@ -173,11 +194,13 @@ async def to_code(config):
         cg.add(var.set_select(select_var))
 
     if CONF_MEDIA_PLAYER in config:
+        cg.add_define("USE_MEDIA_PLAYER")
         mp_var = await media_player.new_media_player(config[CONF_MEDIA_PLAYER])
         cg.add(mp_var.set_parent(var))
         cg.add(var.set_media_player(mp_var))
 
     if CONF_VOLUME in config:
+        cg.add_define("USE_NUMBER")
         vol_var = await number.new_number(
             config[CONF_VOLUME],
             min_value=0.0,
@@ -188,6 +211,7 @@ async def to_code(config):
         cg.add(var.set_volume_number(vol_var))
 
     if CONF_TONE in config:
+        cg.add_define("USE_NUMBER")
         tone_var = await number.new_number(
             config[CONF_TONE],
             min_value=0.0,
@@ -198,6 +222,7 @@ async def to_code(config):
         cg.add(var.set_tone_number(tone_var))
 
     if CONF_SLEEP_TIMER in config:
+        cg.add_define("USE_NUMBER")
         timer_var = await number.new_number(
             config[CONF_SLEEP_TIMER],
             min_value=0.0,
