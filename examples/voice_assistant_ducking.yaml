@@ -1,0 +1,74 @@
+# Voice Assistant Ducking Example
+# Demonstrates:
+# - Running background noise / sleep sounds on a smart speaker
+# - Automatically ducking noise volume when the assistant listens or speaks
+# - Restoring full volume when the assistant finishes
+
+esphome:
+  name: smart-speaker-noise
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+
+logger:
+
+api:
+
+wifi:
+  ssid: "MyWiFi"
+  password: "MyPassword"
+
+external_components:
+  - source: github://domgrimm/esphome-noise
+    components: [noise]
+
+# Hardware audio definition
+i2s_audio:
+  - id: i2s_bus
+    i2s_lrclk_pin: GPIO25
+    i2s_bclk_pin: GPIO26
+
+microphone:
+  - platform: i2s_audio
+    id: assistant_mic
+    i2s_audio_id: i2s_bus
+    i2s_din_pin: GPIO34
+    adc_type: external
+    pdm: false
+
+speaker:
+  - platform: i2s_audio
+    id: assistant_speaker
+    i2s_audio_id: i2s_bus
+    i2s_dout_pin: GPIO22
+    dac_type: external
+
+noise:
+  id: my_noise
+  speaker: assistant_speaker
+  select:
+    name: "Noise Profile"
+  media_player:
+    name: "Noise Player"
+  volume:
+    name: "Noise Volume"
+
+# Native Home Assistant Voice Assistant integration
+voice_assistant:
+  microphone: assistant_mic
+  speaker: assistant_speaker
+  # When the wake word triggers or button is pressed: duck noise to 15%
+  on_listening:
+    - noise.duck:
+        id: my_noise
+        level: 15%
+  # When conversation completes: smoothly restore noise volume
+  on_end:
+    - noise.unduck:
+        id: my_noise
+  # On error or cancellation: restore volume
+  on_error:
+    - noise.unduck:
+        id: my_noise

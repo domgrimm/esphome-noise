@@ -9,7 +9,7 @@ Hardware-agnostic: binds to any `speaker` platform (I2S DAC, amp chip, internal 
 ## Features
 
 - **12 Sound Profiles**: White, Pink, Brown, Gray, Ocean Waves, Gusting Wind, Babbling Stream, Box Fan, Rain Shower, Campfire, Rhythmic Heartbeat, and Alert Beep.
-- **Pop-Free Playback**: Smooth sinusoidal/linear fade-in and fade-out envelopes eliminate clicks, pops, and sudden discontinuities on start, stop, and variant switching.
+- **Pop-Free Playback**: Smooth sinusoidal/linear fade-in and fade-out envelopes eliminate clicks, pops, and sudden discontinuities on start, stop, pause, resume, and variant switching.
 - **True Spatial Stereo**: When running on stereo speakers (`channels: 2`), Left and Right channels use independent PRNG generators and decorrelated phase LFOs for a wide, immersive spatial soundstage.
 - **Rich Home Assistant Entities**:
   - `select`: Sound selector (`Off`, `White`, `Pink`, ..., `Rain`, `Campfire`, `Heartbeat`).
@@ -32,7 +32,7 @@ external_components:
 
 ---
 
-## Configuration
+## Quick Start
 
 ```yaml
 noise:
@@ -89,6 +89,27 @@ noise:
 
 ---
 
+## Configuration Variables
+
+| Option | Type | Default | Description |
+|---|---|---|---|
+| `speaker` | **Required**, ID | | The ID of the `speaker` component to output audio to. |
+| `sample_rate` | Optional, int | `0` | Sample rate in Hz. `0` follows the speaker's configured rate (e.g. 16000, 22050, 44100). |
+| `channels` | Optional, int | `0` | Audio channels. `0` follows speaker, `1` forces mono, `2` enables true spatial stereo decorrelation. |
+| `initial_volume` | Optional, percentage | `100%` | Initial internal playback gain (0%–100%). |
+| `fade_in_time` | Optional, time | `100ms` | Ramp-up duration when playback starts or resumes. |
+| `fade_out_time` | Optional, time | `100ms` | Ramp-down duration when playback stops or pauses. |
+| `select` | Optional, Schema | | Auto-creates a `select` entity listing `Off` and all sound profiles. |
+| `media_player` | Optional, Schema | | Auto-creates a `media_player` entity with Play/Pause/Stop/Volume/Power controls. |
+| `volume` | Optional, Schema | | Auto-creates a `number` entity (0%–100%) for internal volume gain. |
+| `tone` | Optional, Schema | | Auto-creates a `number` entity (0%–100%) for the acoustic low-pass filter. |
+| `sleep_timer` | Optional, Schema | | Auto-creates a `number` entity (0–180 min) for automatic off timers. |
+| `on_play` | Optional, Automation | | Triggered when noise starts playing. |
+| `on_stop` | Optional, Automation | | Triggered when noise stops. |
+| `on_variant_changed` | Optional, Automation | | Triggered when sound profile changes (passes `std::string variant`). |
+
+---
+
 ## Actions
 
 ### `noise.start`
@@ -96,9 +117,9 @@ Starts noise playback. Accepts optional parameters:
 ```yaml
 - noise.start:
     id: my_noise
-    variant: campfire   # white, pink, brown, gray, waves, wind, stream, fan, rain, campfire, heartbeat, beep (templatable)
-    duration: 30min     # auto-off duration (optional, templatable)
-    volume: 75%         # playback volume (optional, templatable)
+    variant: campfire   # Any variant name (templatable)
+    duration: 30min     # Auto-off duration (optional, templatable)
+    volume: 75%         # Playback volume (optional, templatable)
 ```
 
 ### `noise.stop`
@@ -120,51 +141,39 @@ Pause playback with smooth fade-out and resume where you left off:
 ### `noise.duck` & `noise.unduck`
 Temporarily drops volume during voice assistant listening or announcements:
 ```yaml
-# When wake word detected:
 - noise.duck:
     id: my_noise
-    level: 20%  # default 20%
+    level: 20%  # Target duck volume (default 20%, templatable)
 
-# When assistant finishes speaking:
 - noise.unduck:
     id: my_noise
 ```
 
 ### `noise.set_volume`
-Adjusts noise gain without touching speaker DAC/master amplifier volume:
+Adjusts internal generator volume without touching hardware master amplifier gain:
 ```yaml
 - noise.set_volume:
     id: my_noise
-    volume: 60%  # templatable
+    volume: 60%  # 0% to 100% (templatable)
 ```
 
 ### `noise.set_tone`
-Adjusts the acoustic low-pass filter (0% = warm & deep, 100% = crisp full spectrum):
+Adjusts the acoustic low-pass filter (0% = warm & deep rumble, 100% = crisp full spectrum):
 ```yaml
 - noise.set_tone:
     id: my_noise
-    tone: 40%  # templatable
+    tone: 40%  # 0% to 100% (templatable)
 ```
 
 ---
 
-## Voice Assistant Automation Example
+## Examples
 
-Integrate ducking seamlessly with the ESPHome Voice Assistant pipeline:
+Check the [`examples/`](examples/) directory for ready-to-use configurations:
 
-```yaml
-voice_assistant:
-  on_listening:
-    - noise.duck:
-        id: my_noise
-        level: 15%
-  on_end:
-    - noise.unduck:
-        id: my_noise
-  on_error:
-    - noise.unduck:
-        id: my_noise
-```
+- [**`example.yaml`**](example.yaml): General ESP32 + I2S speaker setup with all entities and a physical button.
+- [**`examples/bedside_sound_machine.yaml`**](examples/bedside_sound_machine.yaml): Complete sleep-aid machine with rotary encoder volume knob, profile button, and synchronized auto-dimming nightlight.
+- [**`examples/voice_assistant_ducking.yaml`**](examples/voice_assistant_ducking.yaml): Voice assistant pipeline integration automatically ducking noise during wake word detection and speech.
 
 ---
 

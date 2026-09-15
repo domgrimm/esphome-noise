@@ -1,0 +1,113 @@
+# Bedside Sound Machine Example
+# Demonstrates:
+# - Sleep-aid noise generation with smooth fade-in/fade-out
+# - Physical rotary encoder for volume control
+# - Physical button for sound cycling and long-press power off
+# - Auto-dimming nightlight synchronized with noise playback
+# - Sleep timer preset
+
+esphome:
+  name: bedside-sound-machine
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+
+logger:
+
+external_components:
+  - source: github://domgrimm/esphome-noise
+    components: [noise]
+
+i2s_audio:
+  - i2s_lrclk_pin: GPIO25
+    i2s_bclk_pin: GPIO26
+
+speaker:
+  - platform: i2s_audio
+    id: bedside_speaker
+    i2s_dout_pin: GPIO22
+    dac_type: external
+
+# Optional status/nightlight LED
+output:
+  - platform: ledc
+    id: nightlight_led
+    pin: GPIO16
+
+light:
+  - platform: monochromatic
+    id: nightlight
+    output: nightlight_led
+    name: "Bedside Light"
+
+noise:
+  id: sleep_noise
+  speaker: bedside_speaker
+  channels: 2          # true spatial stereo if hardware supports dual channels
+  fade_in_time: 200ms  # gentle fade-in
+  fade_out_time: 300ms # gentle fade-out
+  initial_volume: 70%
+
+  select:
+    id: sound_select
+    name: "Sound Profile"
+
+  media_player:
+    id: sound_player
+    name: "Bedside Player"
+
+  volume:
+    id: sound_volume
+    name: "Sound Volume"
+
+  tone:
+    id: sound_tone
+    name: "Sound Tone"
+
+  sleep_timer:
+    id: sound_timer
+    name: "Sleep Timer"
+
+  # Synchronize lighting with noise machine
+  on_play:
+    - light.turn_on:
+        id: nightlight
+        brightness: 15%
+        transition_length: 2s
+  on_stop:
+    - light.turn_off:
+        id: nightlight
+        transition_length: 3s
+
+# Physical Controls
+sensor:
+  # Rotary encoder for volume
+  - platform: rotary_encoder
+    name: "Volume Knob"
+    pin_a: GPIO32
+    pin_b: GPIO33
+    on_clockwise:
+      - media_player.volume_up: sound_player
+    on_anticlockwise:
+      - media_player.volume_down: sound_player
+
+binary_sensor:
+  # Push-button: short click cycles sounds, long press turns off
+  - platform: gpio
+    pin:
+      number: GPIO27
+      inverted: true
+      mode: INPUT_PULLUP
+    name: "Sound Button"
+    on_click:
+      - min_length: 50ms
+        max_length: 500ms
+        then:
+          - select.next: sound_select
+      - min_length: 800ms
+        max_length: 3000ms
+        then:
+          - noise.stop:
+              id: sleep_noise
