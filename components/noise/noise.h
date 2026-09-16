@@ -111,6 +111,8 @@ class NoiseSleepTimerNumber : public number::Number {
 /// Procedural noise generator
 class NoiseComponent : public Component {
  public:
+  using Component::defer;
+
   void setup() override;
   void loop() override {}
   void dump_config() override;

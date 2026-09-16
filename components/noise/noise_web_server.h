@@ -22,6 +22,7 @@ class NoiseWebHandler : public AsyncWebHandler {
  protected:
   void handle_index_request_(AsyncWebServerRequest *request);
   void handle_api_request_(AsyncWebServerRequest *request);
+  void defer_(std::function<void()> &&f);
 
   NoiseComponent *parent_{nullptr};
   std::string title_{"Noise Machine"};

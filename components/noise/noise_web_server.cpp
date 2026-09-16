@@ -5,6 +5,7 @@
 #include "noise_dashboard_index.h"
 #include "esphome/core/log.h"
 #include "esphome/core/helpers.h"
+#include "esphome/core/application.h"
 
 namespace esphome::noise {
 
@@ -76,6 +77,12 @@ void NoiseWebHandler::handle_index_request_(AsyncWebServerRequest *request) {
   request->send(response);
 }
 
+void NoiseWebHandler::defer_(std::function<void()> &&f) {
+  if (this->parent_ != nullptr) {
+    App.scheduler.set_timeout(this->parent_, static_cast<const char *>(nullptr), 0, std::move(f));
+  }
+}
+
 void NoiseWebHandler::handle_api_request_(AsyncWebServerRequest *request) {
   if (this->parent_ == nullptr) {
     request->send(500, "application/json", "{\"error\":\"noise component not found\"}");
@@ -96,19 +103,19 @@ void NoiseWebHandler::handle_api_request_(AsyncWebServerRequest *request) {
             vol = (*v > 1.0f) ? (*v / 100.0f) : *v;
           }
         }
-        parent->defer([parent, variant, vol]() { parent->play(variant, 0, vol); });
+        this->defer_([parent, variant, vol]() { parent->play(variant, 0, vol); });
       } else if (action == "stop") {
-        parent->defer([parent]() { parent->stop(); });
+        this->defer_([parent]() { parent->stop(); });
       } else if (action == "pause") {
-        parent->defer([parent]() { parent->pause(); });
+        this->defer_([parent]() { parent->pause(); });
       } else if (action == "resume") {
-        parent->defer([parent]() { parent->resume(); });
+        this->defer_([parent]() { parent->resume(); });
       } else if (action == "volume") {
         if (request->hasArg("value")) {
           auto val = parse_number<float>(request->arg("value"));
           if (val.has_value()) {
             float v = (*val > 1.0f) ? (*val / 100.0f) : *val;
-            parent->defer([parent, v]() { parent->set_volume(v); });
+            this->defer_([parent, v]() { parent->set_volume(v); });
           }
         }
       } else if (action == "tone") {
@@ -116,7 +123,7 @@ void NoiseWebHandler::handle_api_request_(AsyncWebServerRequest *request) {
           auto val = parse_number<float>(request->arg("value"));
           if (val.has_value()) {
             float t = (*val > 1.0f) ? (*val / 100.0f) : *val;
-            parent->defer([parent, t]() { parent->set_tone(t); });
+            this->defer_([parent, t]() { parent->set_tone(t); });
           }
         }
       } else if (action == "sleep_timer") {
@@ -124,11 +131,11 @@ void NoiseWebHandler::handle_api_request_(AsyncWebServerRequest *request) {
           auto val = parse_number<float>(request->arg("minutes"));
           if (val.has_value()) {
             float m = *val;
-            parent->defer([parent, m]() { parent->set_sleep_timer(m); });
+            this->defer_([parent, m]() { parent->set_sleep_timer(m); });
           }
         }
       } else if (action == "mute") {
-        parent->defer([parent]() { parent->set_muted(!parent->is_muted()); });
+        this->defer_([parent]() { parent->set_muted(!parent->is_muted()); });
       }
     }
     request->send(200, "application/json", "{\"success\":true}");
