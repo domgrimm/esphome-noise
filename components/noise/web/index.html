@@ -4,663 +4,781 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Noise Machine</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌊</text></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%2318191d'/><circle cx='50' cy='50' r='20' fill='%23f59e0b'/></svg>">
   <style>
     :root {
-      --bg-main: #0a0d14;
-      --bg-card: rgba(22, 28, 42, 0.75);
-      --bg-card-hover: rgba(30, 39, 58, 0.85);
-      --bg-elevated: #161e30;
-      --border: rgba(255, 255, 255, 0.08);
-      --border-active: rgba(245, 158, 11, 0.4);
-      --text-main: #f1f5f9;
-      --text-muted: #94a3b8;
-      --text-dim: #64748b;
-      --accent: #f59e0b;
-      --accent-glow: rgba(245, 158, 11, 0.25);
-      --accent-dark: #b45309;
-      --success: #10b981;
-      --danger: #ef4444;
-      --radius-lg: 20px;
-      --radius-md: 14px;
-      --radius-sm: 8px;
+      --chassis: #111215;
+      --panel: #181a1f;
+      --panel-elevated: #20232a;
+      --panel-inset: #131518;
+      --border-subtle: rgba(255, 255, 255, 0.07);
+      --border-panel: rgba(255, 255, 255, 0.12);
+      --text-primary: #ede9e3;
+      --text-secondary: #9da1ab;
+      --text-tertiary: #5f636e;
+      --amber: #f59e0b;
+      --amber-dim: rgba(245, 158, 11, 0.15);
+      --amber-glow: rgba(245, 158, 11, 0.35);
+      --active-led: #10b981;
+      --led-off: #2a2e37;
+      --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Menlo, Consolas, monospace;
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+      --radius: 8px;
       --safe-top: env(safe-area-inset-top, 0px);
       --safe-bottom: env(safe-area-inset-bottom, 0px);
     }
+
     * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background-color: var(--bg-main);
-      color: var(--text-main);
+      font-family: var(--font-sans);
+      background-color: var(--chassis);
+      color: var(--text-primary);
       min-height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: calc(16px + var(--safe-top)) 16px calc(32px + var(--safe-bottom));
+      padding: calc(16px + var(--safe-top)) 14px calc(28px + var(--safe-bottom));
       overflow-x: hidden;
-    }
-    .container {
-      width: 100%;
-      max-width: 480px;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
+      -webkit-font-smoothing: antialiased;
     }
 
-    /* Top Bar */
+    .container {
+      width: 100%;
+      max-width: 460px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    /* Top Machine Header */
     header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 4px 4px 8px;
+      padding: 4px 6px 6px;
+      border-bottom: 1px solid var(--border-subtle);
     }
-    .brand {
+    .brand-group {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .brand-id {
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-tertiary);
+    }
+    h1 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--text-primary);
+    }
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--panel-inset);
+      border: 1px solid var(--border-subtle);
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      color: var(--text-secondary);
+    }
+    .led-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--led-off);
+      transition: background 0.3s;
+    }
+    .led-dot.active {
+      background: var(--active-led);
+      box-shadow: 0 0 6px var(--active-led);
+    }
+    .led-dot.paused {
+      background: var(--amber);
+      box-shadow: 0 0 6px var(--amber);
+    }
+
+    /* Hardware Panel Units */
+    .panel-unit {
+      background: var(--panel);
+      border: 1px solid var(--border-panel);
+      border-radius: var(--radius);
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .panel-unit-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
+      font-weight: 600;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      color: var(--text-tertiary);
+    }
+
+    /* Oscilloscope / Monitor Display */
+    .display-screen {
+      background: var(--panel-inset);
+      border: 1px solid rgba(0, 0, 0, 0.8);
+      border-radius: 6px;
+      padding: 12px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6);
+    }
+    .display-screen::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        rgba(0, 0, 0, 0.15),
+        rgba(0, 0, 0, 0.15) 1px,
+        transparent 1px,
+        transparent 2px
+      );
+      pointer-events: none;
+      z-index: 2;
+    }
+    #visualizer {
+      width: 100%;
+      height: 68px;
+      display: block;
+    }
+    .display-readout {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-top: 8px;
+      padding-top: 8px;
+      border-top: 1px dashed rgba(255, 255, 255, 0.08);
+      font-family: var(--font-mono);
+    }
+    .readout-main {
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      color: var(--amber);
+    }
+    .readout-sub {
+      font-size: 0.68rem;
+      color: var(--text-tertiary);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    /* Transport Controls */
+    .transport-bar {
+      display: grid;
+      grid-template-columns: 1fr 2fr 1fr;
+      gap: 8px;
+      align-items: center;
+    }
+    .t-btn {
+      background: var(--panel-elevated);
+      border: 1px solid var(--border-panel);
+      color: var(--text-primary);
+      border-radius: 6px;
+      padding: 12px 8px;
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: background 0.15s, transform 0.1s, border-color 0.15s;
+    }
+    .t-btn:active {
+      transform: translateY(1px);
+      background: var(--panel-inset);
+    }
+    .t-btn.primary {
+      background: var(--text-primary);
+      color: #111;
+      border-color: var(--text-primary);
+      padding: 14px 10px;
+      font-size: 0.8rem;
+    }
+    .t-btn.primary:active {
+      background: #cfcac2;
+    }
+    .t-btn.primary.active {
+      background: var(--amber);
+      border-color: var(--amber);
+      color: #111;
+    }
+    .t-btn.t-btn-latch.active {
+      border-color: var(--amber);
+      color: var(--amber);
+      background: var(--amber-dim);
+    }
+    .t-btn svg { width: 14px; height: 14px; fill: currentColor; }
+
+    /* Sound Profile Keypad (12 variants) */
+    .sound-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+    @media (min-width: 400px) {
+      .sound-grid {
+        grid-template-columns: repeat(4, 1fr);
+      }
+    }
+    .sound-key {
+      background: var(--panel-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      padding: 10px 8px 9px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-align: left;
+      user-select: none;
+    }
+    .sound-key:hover {
+      border-color: var(--border-panel);
+    }
+    .sound-key:active {
+      transform: translateY(1px);
+      background: var(--panel-inset);
+    }
+    .sound-key.active {
+      background: var(--panel-inset);
+      border-color: var(--amber);
+      box-shadow: inset 0 0 0 1px var(--amber);
+    }
+    .sound-key-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .sound-key-led {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--led-off);
+      transition: background 0.2s;
+    }
+    .sound-key.active .sound-key-led {
+      background: var(--amber);
+      box-shadow: 0 0 6px var(--amber);
+    }
+    .sound-key-num {
+      font-family: var(--font-mono);
+      font-size: 0.58rem;
+      color: var(--text-tertiary);
+      letter-spacing: 0.05em;
+    }
+    .sound-key-name {
+      font-size: 0.76rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .sound-key.active .sound-key-name {
+      color: var(--text-primary);
+      font-weight: 700;
+    }
+
+    /* Precision Controls & Sliders */
+    .control-block {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .control-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      letter-spacing: 0.05em;
+      color: var(--text-secondary);
+    }
+    .control-val {
+      color: var(--amber);
+      font-weight: 700;
+    }
+    .slider-row {
       display: flex;
       align-items: center;
       gap: 10px;
     }
-    .brand-icon {
-      width: 32px;
-      height: 32px;
-      border-radius: 10px;
-      background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+    .step-btn {
+      width: 28px;
+      height: 28px;
+      flex-shrink: 0;
+      background: var(--panel-elevated);
+      border: 1px solid var(--border-panel);
+      color: var(--text-secondary);
+      border-radius: 4px;
+      cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 4px 12px var(--accent-glow);
-    }
-    .brand-icon svg { width: 18px; height: 18px; fill: #fff; }
-    h1 { font-size: 1.25rem; font-weight: 700; letter-spacing: -0.02em; }
-    .status-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      background: var(--bg-card);
-      border: 1px solid var(--border);
-      padding: 4px 10px;
-      border-radius: 9999px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      color: var(--text-muted);
-    }
-    .status-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--text-dim);
-      transition: background 0.3s;
-    }
-    .status-dot.active {
-      background: var(--success);
-      box-shadow: 0 0 8px var(--success);
-    }
-    .status-dot.paused {
-      background: var(--accent);
-      box-shadow: 0 0 8px var(--accent);
-    }
-
-    /* Glass Card */
-    .card {
-      background: var(--bg-card);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      padding: 18px;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.36);
-    }
-
-    /* Hero Player */
-    .hero-card {
-      position: relative;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      text-align: center;
-      padding: 24px 20px;
-      border: 1px solid var(--border-active);
-      box-shadow: 0 12px 40px var(--accent-glow);
-      transition: border-color 0.4s, box-shadow 0.4s;
-    }
-    #visualizer {
-      width: 100%;
-      height: 80px;
-      margin-bottom: 12px;
-      border-radius: var(--radius-md);
-      background: rgba(0, 0, 0, 0.25);
-    }
-    .current-sound-title {
-      font-size: 1.5rem;
-      font-weight: 800;
-      letter-spacing: -0.02em;
-      margin-bottom: 4px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .current-sound-desc {
+      font-family: var(--font-mono);
       font-size: 0.85rem;
-      color: var(--text-muted);
-      margin-bottom: 20px;
-      min-height: 1.2em;
-    }
-    .hero-controls {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 20px;
-      width: 100%;
-    }
-    .btn-play {
-      width: 76px;
-      height: 76px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, var(--accent), var(--accent-dark));
-      border: none;
-      outline: none;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 8px 24px var(--accent-glow);
-      transition: transform 0.15s, box-shadow 0.2s;
-    }
-    .btn-play:active { transform: scale(0.93); }
-    .btn-play svg { width: 34px; height: 34px; fill: #fff; }
-    .btn-circle-secondary {
-      width: 48px;
-      height: 48px;
-      border-radius: 50%;
-      background: var(--bg-elevated);
-      border: 1px solid var(--border);
-      color: var(--text-main);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: all 0.15s;
-    }
-    .btn-circle-secondary:active { transform: scale(0.92); background: var(--bg-card-hover); }
-    .btn-circle-secondary svg { width: 20px; height: 20px; fill: currentColor; }
-
-    /* Section Headings */
-    .section-title {
-      font-size: 0.82rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--text-dim);
-      margin-bottom: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    /* Sound Variants Grid */
-    .variants-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
-    }
-    .variant-card {
-      background: var(--bg-elevated);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-md);
-      padding: 12px 8px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 6px;
-      cursor: pointer;
-      transition: all 0.2s;
-      text-align: center;
-    }
-    .variant-card:active { transform: scale(0.96); }
-    .variant-card.active {
-      border-color: var(--accent);
-      background: rgba(245, 158, 11, 0.12);
-      box-shadow: 0 0 16px var(--accent-glow);
-    }
-    .variant-icon {
-      font-size: 1.5rem;
-      line-height: 1;
-    }
-    .variant-name {
-      font-size: 0.8rem;
-      font-weight: 600;
-    }
-    .variant-sub {
-      font-size: 0.65rem;
-      color: var(--text-dim);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      max-width: 100%;
-    }
-
-    /* Sliders & Controls */
-    .control-row {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      margin-bottom: 14px;
-    }
-    .control-row:last-child { margin-bottom: 0; }
-    .control-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 0.85rem;
-      font-weight: 600;
-    }
-    .control-header .val {
-      color: var(--accent);
       font-weight: 700;
     }
-    .slider-wrap {
-      display: flex;
-      align-items: center;
-      gap: 12px;
+    .step-btn:active {
+      transform: translateY(1px);
+      background: var(--panel-inset);
     }
-    .slider-icon-btn {
-      background: none;
-      border: none;
-      color: var(--text-muted);
-      cursor: pointer;
-      padding: 4px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .slider-icon-btn svg { width: 20px; height: 20px; fill: currentColor; }
     input[type="range"] {
       -webkit-appearance: none;
       appearance: none;
       width: 100%;
-      height: 8px;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.12);
+      height: 6px;
+      border-radius: 3px;
+      background: var(--panel-inset);
+      border: 1px solid rgba(255, 255, 255, 0.08);
       outline: none;
-      position: relative;
     }
     input[type="range"]::-webkit-slider-thumb {
       -webkit-appearance: none;
       appearance: none;
-      width: 22px;
-      height: 22px;
-      border-radius: 50%;
-      background: #fff;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+      width: 18px;
+      height: 18px;
+      border-radius: 4px;
+      background: #d8d4cd;
+      border: 1px solid #ffffff;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
       cursor: pointer;
-      border: 2px solid var(--accent);
-      transition: transform 0.1s;
+      transition: background 0.1s;
     }
-    input[type="range"]::-webkit-slider-thumb:active {
-      transform: scale(1.2);
+    input[type="range"]::-webkit-slider-thumb:hover {
+      background: #ffffff;
     }
 
-    /* Chips Row */
-    .chips-row {
+    /* Segmented Selector for Sleep Timer */
+    .segmented-bar {
       display: flex;
-      gap: 6px;
+      background: var(--panel-inset);
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      padding: 2px;
+      gap: 2px;
       overflow-x: auto;
-      padding-bottom: 2px;
       scrollbar-width: none;
     }
-    .chips-row::-webkit-scrollbar { display: none; }
-    .chip {
-      background: var(--bg-elevated);
-      border: 1px solid var(--border);
-      color: var(--text-muted);
-      border-radius: 9999px;
-      padding: 6px 12px;
-      font-size: 0.75rem;
+    .segmented-bar::-webkit-scrollbar { display: none; }
+    .seg-item {
+      flex: 1;
+      min-width: 44px;
+      padding: 6px 4px;
+      background: transparent;
+      border: none;
+      color: var(--text-tertiary);
+      border-radius: 4px;
+      font-family: var(--font-mono);
+      font-size: 0.68rem;
       font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-align: center;
       white-space: nowrap;
-      cursor: pointer;
-      transition: all 0.15s;
     }
-    .chip:active { transform: scale(0.95); }
-    .chip.active {
-      background: var(--accent);
-      color: #fff;
-      border-color: var(--accent);
-      box-shadow: 0 2px 8px var(--accent-glow);
+    .seg-item:hover { color: var(--text-secondary); }
+    .seg-item.active {
+      background: var(--panel-elevated);
+      color: var(--amber);
+      font-weight: 700;
+      border: 1px solid var(--border-panel);
     }
 
-    /* Presets Grid */
-    .presets-grid {
+    /* Hardware Memory Banks (Presets) */
+    .preset-row {
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 8px;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
     }
-    .preset-card {
-      background: var(--bg-elevated);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-md);
-      padding: 10px 12px;
+    .preset-btn {
+      background: var(--panel-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      padding: 8px 6px;
       display: flex;
-      align-items: center;
-      gap: 10px;
+      flex-direction: column;
+      gap: 3px;
       cursor: pointer;
+      text-align: left;
       transition: all 0.15s;
     }
-    .preset-card:active { transform: scale(0.97); }
-    .preset-card:hover { border-color: var(--border-active); }
-    .preset-icon { font-size: 1.25rem; }
-    .preset-info { text-align: left; overflow: hidden; }
-    .preset-name { font-size: 0.8rem; font-weight: 700; }
-    .preset-sub { font-size: 0.65rem; color: var(--text-dim); }
+    .preset-btn:hover { border-color: var(--border-panel); }
+    .preset-btn:active { transform: translateY(1px); background: var(--panel-inset); }
+    .preset-tag {
+      font-family: var(--font-mono);
+      font-size: 0.58rem;
+      font-weight: 700;
+      color: var(--amber);
+      letter-spacing: 0.05em;
+    }
+    .preset-title {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      letter-spacing: 0.01em;
+    }
+    .preset-meta {
+      font-family: var(--font-mono);
+      font-size: 0.58rem;
+      color: var(--text-tertiary);
+    }
 
-    /* All Components Drawer (webserver-listcomponents) */
-    .components-card {
+    /* Hardware Peripherals & Entities Drawer */
+    .components-unit {
       padding: 0;
       overflow: hidden;
     }
-    .components-header {
-      padding: 16px 18px;
+    .components-trigger {
+      padding: 12px 14px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       cursor: pointer;
       user-select: none;
+      background: var(--panel);
     }
-    .components-header-left {
+    .components-trigger:hover {
+      background: var(--panel-elevated);
+    }
+    .components-label {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 8px;
     }
-    .components-badge {
-      font-size: 0.7rem;
-      background: rgba(16, 185, 129, 0.15);
-      color: var(--success);
-      padding: 2px 8px;
-      border-radius: 999px;
-      font-weight: 600;
+    .components-count-badge {
+      background: var(--panel-inset);
+      border: 1px solid var(--border-subtle);
+      color: var(--text-tertiary);
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 0.62rem;
     }
-    .components-chevron {
-      width: 20px;
-      height: 20px;
-      fill: var(--text-muted);
-      transition: transform 0.3s;
+    .chevron-icon {
+      width: 14px;
+      height: 14px;
+      fill: var(--text-tertiary);
+      transition: transform 0.2s;
     }
-    .components-card.open .components-chevron {
+    .components-unit.open .chevron-icon {
       transform: rotate(180deg);
     }
-    .components-body {
+    .components-drawer {
       display: none;
-      padding: 0 16px 16px;
-      border-top: 1px solid var(--border);
+      padding: 0 14px 14px;
+      border-top: 1px solid var(--border-subtle);
+      background: var(--panel-inset);
     }
-    .components-card.open .components-body {
-      display: block;
-    }
-    .components-search {
-      width: 100%;
-      background: var(--bg-elevated);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      padding: 8px 12px;
-      color: var(--text-main);
-      font-size: 0.82rem;
-      margin: 12px 0 10px;
-      outline: none;
-    }
-    .components-search:focus {
-      border-color: var(--accent);
-    }
-    .components-list {
+    .components-unit.open .components-drawer {
       display: flex;
       flex-direction: column;
       gap: 8px;
-      max-height: 360px;
-      overflow-y: auto;
-      padding-right: 2px;
     }
-    .entity-item {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      background: var(--bg-elevated);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-sm);
-      padding: 10px 12px;
-      font-size: 0.82rem;
+    .components-search {
+      width: 100%;
+      background: var(--panel);
+      border: 1px solid var(--border-subtle);
+      border-radius: 4px;
+      padding: 7px 10px;
+      color: var(--text-primary);
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      margin-top: 10px;
+      outline: none;
     }
-    .entity-info {
+    .components-search:focus {
+      border-color: var(--border-panel);
+    }
+    .entity-table {
       display: flex;
       flex-direction: column;
-      gap: 2px;
+      gap: 4px;
+      max-height: 280px;
+      overflow-y: auto;
+    }
+    .entity-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 10px;
+      background: var(--panel);
+      border: 1px solid var(--border-subtle);
+      border-radius: 4px;
+      font-size: 0.76rem;
+    }
+    .entity-desc {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
       overflow: hidden;
       padding-right: 8px;
     }
-    .entity-name { font-weight: 600; }
-    .entity-id { font-size: 0.68rem; color: var(--text-dim); }
-    .entity-control { display: flex; align-items: center; gap: 8px; }
-
-    /* Switch toggle */
-    .switch-toggle {
-      position: relative;
-      width: 44px;
-      height: 24px;
-      background: var(--border);
-      border-radius: 999px;
-      cursor: pointer;
-      transition: background 0.2s;
+    .entity-name {
+      font-weight: 600;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
-    .switch-toggle.on { background: var(--success); }
-    .switch-toggle::after {
+    .entity-meta {
+      font-family: var(--font-mono);
+      font-size: 0.62rem;
+      color: var(--text-tertiary);
+    }
+
+    /* Minimalist Toggle Switch */
+    .mini-switch {
+      width: 34px;
+      height: 18px;
+      background: var(--panel-inset);
+      border: 1px solid var(--border-panel);
+      border-radius: 10px;
+      cursor: pointer;
+      position: relative;
+      flex-shrink: 0;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .mini-switch.on {
+      background: var(--amber);
+      border-color: var(--amber);
+    }
+    .mini-switch::after {
       content: '';
       position: absolute;
-      width: 18px;
-      height: 18px;
+      width: 12px;
+      height: 12px;
       border-radius: 50%;
       background: #fff;
-      top: 3px;
-      left: 3px;
-      transition: transform 0.2s;
+      top: 2px;
+      left: 2px;
+      transition: transform 0.15s;
     }
-    .switch-toggle.on::after { transform: translateX(20px); }
-
-    .btn-press {
-      background: var(--accent);
-      color: #fff;
-      border: none;
-      padding: 4px 10px;
-      border-radius: var(--radius-sm);
-      font-size: 0.75rem;
+    .mini-switch.on::after {
+      transform: translateX(16px);
+      background: #111;
+    }
+    .mini-press {
+      background: var(--panel-elevated);
+      border: 1px solid var(--border-panel);
+      color: var(--text-primary);
+      padding: 3px 8px;
+      border-radius: 3px;
+      font-family: var(--font-mono);
+      font-size: 0.65rem;
       font-weight: 600;
       cursor: pointer;
+      text-transform: uppercase;
     }
-    .btn-press:active { transform: scale(0.95); }
-
-    /* Timer Countdown badge */
-    .countdown-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      background: rgba(245, 158, 11, 0.15);
-      color: var(--accent);
-      padding: 2px 8px;
-      border-radius: 9999px;
-      font-size: 0.75rem;
-      font-weight: 700;
-    }
+    .mini-press:active { transform: translateY(1px); }
   </style>
 </head>
 <body>
   <div class="container">
-    <!-- Header -->
+    <!-- Top System Header -->
     <header>
-      <div class="brand">
-        <div class="brand-icon">
-          <svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
-        </div>
+      <div class="brand-group">
+        <div class="brand-id">Acoustic Synthesizer • Model NG-1</div>
         <h1 id="app-title">Noise Machine</h1>
       </div>
-      <div class="status-pill">
-        <span class="status-dot" id="status-dot"></span>
-        <span id="status-text">Connecting...</span>
+      <div class="status-badge">
+        <span class="led-dot" id="status-dot"></span>
+        <span id="status-text">OFFLINE</span>
       </div>
     </header>
 
-    <!-- Hero Player Card -->
-    <div class="card hero-card" id="hero-card">
-      <canvas id="visualizer"></canvas>
-      <div class="current-sound-title">
-        <span id="hero-icon">🤎</span>
-        <span id="hero-title">Brown Noise</span>
-      </div>
-      <div class="current-sound-desc" id="hero-desc">Deep low-frequency roar for restorative sleep</div>
-      <div class="hero-controls">
-        <button class="btn-circle-secondary" id="btn-power" title="Power Off">
-          <svg viewBox="0 0 24 24"><path d="M13 3h-2v10h2V3zm4.83 2.17l-1.42 1.42C17.99 7.86 19 9.81 19 12c0 3.87-3.13 7-7 7s-7-3.13-7-7c0-2.19 1.01-4.14 2.58-5.42L6.17 5.17C4.23 6.82 3 9.26 3 12c0 4.97 4.03 9 9 9s9-4.03 9-9c0-2.74-1.23-5.18-3.17-6.83z"/></svg>
-        </button>
-        <button class="btn-play" id="btn-play-pause" title="Play/Pause">
-          <svg viewBox="0 0 24 24" id="play-icon"><path d="M8 5v14l11-7z"/></svg>
-        </button>
-        <button class="btn-circle-secondary" id="btn-mute" title="Mute/Unmute">
-          <svg viewBox="0 0 24 24" id="mute-icon"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
-        </button>
-      </div>
-    </div>
-
-    <!-- Sound Profiles -->
-    <div class="card">
-      <div class="section-title">Sound Profiles</div>
-      <div class="variants-grid" id="variants-grid">
-        <!-- Variant cards dynamically or statically injected -->
-      </div>
-    </div>
-
-    <!-- Audio Adjustments (Volume, Tone, Sleep Timer) -->
-    <div class="card">
-      <div class="section-title">Sound Shaping</div>
-      
-      <!-- Volume Slider -->
-      <div class="control-row">
-        <div class="control-header">
-          <span>Master Volume</span>
-          <span class="val" id="volume-val">80%</span>
-        </div>
-        <div class="slider-wrap">
-          <button class="slider-icon-btn" id="vol-down">
-            <svg viewBox="0 0 24 24"><path d="M7 11v2h10v-2H7z"/></svg>
-          </button>
-          <input type="range" id="volume-slider" min="0" max="100" value="80">
-          <button class="slider-icon-btn" id="vol-up">
-            <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-          </button>
-        </div>
-      </div>
-
-      <!-- Tone Slider (Low-Pass Filter) -->
-      <div class="control-row" id="tone-row">
-        <div class="control-header">
-          <span>Tone (Filter)</span>
-          <span class="val" id="tone-val">100%</span>
-        </div>
-        <div class="slider-wrap">
-          <span style="font-size:0.7rem; color:var(--text-dim);">Warm</span>
-          <input type="range" id="tone-slider" min="0" max="100" value="100">
-          <span style="font-size:0.7rem; color:var(--text-dim);">Crisp</span>
-        </div>
-      </div>
-
-      <!-- Sleep Timer -->
-      <div class="control-row" id="timer-row">
-        <div class="control-header">
-          <span>Sleep Timer</span>
-          <span class="countdown-badge" id="timer-countdown" style="display:none;">⏳ <span id="timer-countdown-val">30m</span></span>
-          <span class="val" id="timer-val">Off</span>
-        </div>
-        <div class="chips-row" id="timer-chips">
-          <button class="chip active" data-mins="0">Off</button>
-          <button class="chip" data-mins="15">15m</button>
-          <button class="chip" data-mins="30">30m</button>
-          <button class="chip" data-mins="45">45m</button>
-          <button class="chip" data-mins="60">60m</button>
-          <button class="chip" data-mins="90">90m</button>
-          <button class="chip" data-mins="120">120m</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Quick Presets -->
-    <div class="card">
-      <div class="section-title">Quick Presets</div>
-      <div class="presets-grid">
-        <div class="preset-card" data-preset="sleep">
-          <div class="preset-icon">🌙</div>
-          <div class="preset-info">
-            <div class="preset-name">Deep Sleep</div>
-            <div class="preset-sub">Brown • 75% • 45m</div>
-          </div>
-        </div>
-        <div class="preset-card" data-preset="rain">
-          <div class="preset-icon">🌧️</div>
-          <div class="preset-info">
-            <div class="preset-name">Rainy Night</div>
-            <div class="preset-sub">Rain • 70% • 60m</div>
-          </div>
-        </div>
-        <div class="preset-card" data-preset="focus">
-          <div class="preset-icon">🧠</div>
-          <div class="preset-info">
-            <div class="preset-name">Deep Focus</div>
-            <div class="preset-sub">Pink • 60% • 90m</div>
-          </div>
-        </div>
-        <div class="preset-card" data-preset="calm">
-          <div class="preset-icon">🌊</div>
-          <div class="preset-info">
-            <div class="preset-name">Ocean Calm</div>
-            <div class="preset-sub">Waves • 65% • 30m</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- All Components Drawer (webserver-listcomponents compatibility) -->
-    <div class="card components-card" id="components-card">
-      <div class="components-header" id="components-toggle">
-        <div class="components-header-left">
-          <span style="font-size:1.1rem;">⚡</span>
+    <!-- Monitor Display & Transport Unit -->
+    <div class="panel-unit">
+      <div class="display-screen">
+        <canvas id="visualizer"></canvas>
+        <div class="display-readout">
           <div>
-            <div style="font-weight:700; font-size:0.9rem;">Device Components</div>
-            <div style="font-size:0.7rem; color:var(--text-muted);" id="components-subtitle">Surfaced from webserver-listcomponents</div>
+            <div class="readout-main" id="hero-title">BROWN</div>
+            <div class="readout-sub">SPECTRUM OSCILLOSCOPE</div>
+          </div>
+          <div style="text-align:right;">
+            <div class="readout-sub" id="telemetry-info">44.1 kHz • I2S</div>
+            <div class="readout-sub" id="timer-countdown" style="display:none; color:var(--amber); font-weight:700;">
+              REM <span id="timer-countdown-val">00:00</span>
+            </div>
           </div>
         </div>
-        <div style="display:flex; align-items:center; gap:8px;">
-          <span class="components-badge" id="components-count">0 items</span>
-          <svg class="components-chevron" viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
+      </div>
+
+      <!-- Transport Bar -->
+      <div class="transport-bar">
+        <button class="t-btn" id="btn-power" title="Hardware Power Off">
+          <svg viewBox="0 0 24 24"><path d="M13 3h-2v10h2V3zm4.83 2.17l-1.42 1.42C17.99 7.86 19 9.81 19 12c0 3.87-3.13 7-7 7s-7-3.13-7-7c0-2.19 1.01-4.14 2.58-5.42L6.17 5.17C4.23 6.82 3 9.26 3 12c0 4.97 4.03 9 9 9s9-4.03 9-9c0-2.74-1.23-5.18-3.17-6.83z"/></svg>
+          PWR
+        </button>
+        <button class="t-btn primary" id="btn-play-pause" title="Play / Pause">
+          <svg viewBox="0 0 24 24" id="play-icon"><path d="M8 5v14l11-7z"/></svg>
+          <span id="play-text">PLAY</span>
+        </button>
+        <button class="t-btn t-btn-latch" id="btn-mute" title="Mute Output">
+          <svg viewBox="0 0 24 24" id="mute-icon"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+          MUTE
+        </button>
+      </div>
+    </div>
+
+    <!-- Sound Profiles Matrix (12 Profiles, No subtitles) -->
+    <div class="panel-unit">
+      <div class="panel-unit-header">
+        <span>Sound Matrix</span>
+        <span>12 Profiles</span>
+      </div>
+      <div class="sound-grid" id="sound-grid">
+        <!-- Injected via JavaScript -->
+      </div>
+    </div>
+
+    <!-- Acoustic Calibration (Volume, Tone, Sleep Timer) -->
+    <div class="panel-unit">
+      <div class="panel-unit-header">
+        <span>Acoustic Calibration</span>
+        <span>DSP Controls</span>
+      </div>
+
+      <!-- Volume -->
+      <div class="control-block">
+        <div class="control-header">
+          <span>MASTER LEVEL</span>
+          <span class="control-val" id="volume-val">80%</span>
+        </div>
+        <div class="slider-row">
+          <button class="step-btn" id="vol-down">−</button>
+          <input type="range" id="volume-slider" min="0" max="100" value="80">
+          <button class="step-btn" id="vol-up">+</button>
         </div>
       </div>
-      <div class="components-body">
-        <input type="text" class="components-search" id="components-search" placeholder="Search entities...">
-        <div class="components-list" id="components-list">
-          <div style="text-align:center; padding:16px; color:var(--text-dim); font-size:0.8rem;">Loading components...</div>
+
+      <!-- Tone (Filter Cutoff) -->
+      <div class="control-block" id="tone-block">
+        <div class="control-header">
+          <span>LOW-PASS FILTER (TONE)</span>
+          <span class="control-val" id="tone-val">100%</span>
+        </div>
+        <div class="slider-row">
+          <span style="font-family:var(--font-mono); font-size:0.65rem; color:var(--text-tertiary); width:32px;">WARM</span>
+          <input type="range" id="tone-slider" min="0" max="100" value="100">
+          <span style="font-family:var(--font-mono); font-size:0.65rem; color:var(--text-tertiary); width:32px; text-align:right;">OPEN</span>
+        </div>
+      </div>
+
+      <!-- Sleep Timer Segmented -->
+      <div class="control-block" id="timer-block">
+        <div class="control-header">
+          <span>SLEEP TIMER</span>
+          <span class="control-val" id="timer-val">OFF</span>
+        </div>
+        <div class="segmented-bar" id="timer-chips">
+          <button class="seg-item active" data-mins="0">OFF</button>
+          <button class="seg-item" data-mins="15">15M</button>
+          <button class="seg-item" data-mins="30">30M</button>
+          <button class="seg-item" data-mins="45">45M</button>
+          <button class="seg-item" data-mins="60">60M</button>
+          <button class="seg-item" data-mins="90">90M</button>
+          <button class="seg-item" data-mins="120">120M</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Memory Banks (Quick Presets) -->
+    <div class="panel-unit">
+      <div class="panel-unit-header">
+        <span>Memory Banks</span>
+        <span>Quick Recalls</span>
+      </div>
+      <div class="preset-row">
+        <button class="preset-btn" data-preset="sleep">
+          <span class="preset-tag">M1</span>
+          <span class="preset-title">Sleep</span>
+          <span class="preset-meta">Brown 75%</span>
+        </button>
+        <button class="preset-btn" data-preset="rain">
+          <span class="preset-tag">M2</span>
+          <span class="preset-title">Rain</span>
+          <span class="preset-meta">Rain 70%</span>
+        </button>
+        <button class="preset-btn" data-preset="focus">
+          <span class="preset-tag">M3</span>
+          <span class="preset-title">Focus</span>
+          <span class="preset-meta">Pink 60%</span>
+        </button>
+        <button class="preset-btn" data-preset="surf">
+          <span class="preset-tag">M4</span>
+          <span class="preset-title">Surf</span>
+          <span class="preset-meta">Waves 65%</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Peripherals Drawer (webserver-listcomponents compatible) -->
+    <div class="panel-unit components-unit" id="components-card">
+      <div class="components-trigger" id="components-toggle">
+        <div class="components-label">
+          <span>PERIPHERALS & ENTITIES</span>
+          <span class="components-count-badge" id="components-count">0 ENTITIES</span>
+        </div>
+        <svg class="chevron-icon" viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
+      </div>
+      <div class="components-drawer">
+        <input type="text" class="components-search" id="components-search" placeholder="Filter entities by id or name...">
+        <div class="entity-table" id="components-list">
+          <div style="font-family:var(--font-mono); font-size:0.7rem; color:var(--text-tertiary); text-align:center; padding:12px;">Querying /components endpoint...</div>
         </div>
       </div>
     </div>
   </div>
 
   <script>
-    // State management
+    // 12 Noise Generator Profiles
     const SOUNDS = [
-      { id: 'Brown', name: 'Brown', icon: '🤎', desc: 'Deep low-frequency roar for restorative sleep', color: '#f59e0b', glow: 'rgba(245, 158, 11, 0.25)' },
-      { id: 'Pink', name: 'Pink', icon: '🌸', desc: 'Gentle balanced noise for focus & relaxation', color: '#f43f5e', glow: 'rgba(244, 63, 94, 0.25)' },
-      { id: 'White', name: 'White', icon: '🤍', desc: 'Crisp full-spectrum mask for blocking distractions', color: '#38bdf8', glow: 'rgba(56, 189, 248, 0.25)' },
-      { id: 'Waves', name: 'Waves', icon: '🌊', desc: 'Continuous rolling ocean surf & swells', color: '#06b6d4', glow: 'rgba(6, 182, 212, 0.25)' },
-      { id: 'Rain', name: 'Rain', icon: '🌧️', desc: 'Calming steady raindrops on a quiet roof', color: '#3b82f6', glow: 'rgba(59, 130, 246, 0.25)' },
-      { id: 'Campfire', name: 'Campfire', icon: '🪵', desc: 'Crackling wood embers & hearthside warmth', color: '#f97316', glow: 'rgba(249, 115, 22, 0.25)' },
-      { id: 'Stream', name: 'Stream', icon: '🏞️', desc: 'Babbling mountain brook rushing over stones', color: '#14b8a6', glow: 'rgba(20, 184, 166, 0.25)' },
-      { id: 'Wind', name: 'Wind', icon: '💨', desc: 'Soothing mountain breeze blowing through pines', color: '#0ea5e9', glow: 'rgba(14, 165, 233, 0.25)' },
-      { id: 'Fan', name: 'Fan', icon: '🌀', desc: 'Steady rotary blade air oscillation hum', color: '#0d9488', glow: 'rgba(13, 148, 136, 0.25)' },
-      { id: 'Gray', name: 'Gray', icon: '🩶', desc: 'Psychoacoustically equalized comfortable noise', color: '#a855f7', glow: 'rgba(168, 85, 247, 0.25)' },
-      { id: 'Heartbeat', name: 'Heartbeat', icon: '💓', desc: 'Rhythmic soothing maternal pulse', color: '#ef4444', glow: 'rgba(239, 68, 68, 0.25)' },
-      { id: 'Beep', name: 'Beep', icon: '🔔', desc: 'Periodic alert tone and calibration cue', color: '#10b981', glow: 'rgba(16, 185, 129, 0.25)' },
+      { id: 'White', name: 'White', num: '01' },
+      { id: 'Pink', name: 'Pink', num: '02' },
+      { id: 'Brown', name: 'Brown', num: '03' },
+      { id: 'Gray', name: 'Gray', num: '04' },
+      { id: 'Waves', name: 'Waves', num: '05' },
+      { id: 'Wind', name: 'Wind', num: '06' },
+      { id: 'Stream', name: 'Stream', num: '07' },
+      { id: 'Fan', name: 'Fan', num: '08' },
+      { id: 'Rain', name: 'Rain', num: '09' },
+      { id: 'Campfire', name: 'Campfire', num: '10' },
+      { id: 'Heartbeat', name: 'Heartbeat', num: '11' },
+      { id: 'Beep', name: 'Beep', num: '12' },
     ];
 
     let state = {
@@ -670,19 +788,15 @@
       volume: 0.8,
       tone: 1.0,
       sleep_timer: 0,
-      muted: false,
-      ducked: false
+      muted: false
     };
 
     let entities = [];
     let isMock = (window.location.protocol === 'file:' || window.location.hostname === 'localhost');
-    let timerCountdownInterval = null;
-    let timerEndsAt = null;
 
-    // Canvas visualizer
+    // Oscilloscope Screen Renderer
     const canvas = document.getElementById('visualizer');
     const ctx = canvas.getContext('2d');
-    let animFrame;
     let phase = 0;
 
     function resizeCanvas() {
@@ -693,132 +807,186 @@
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
 
-    function drawVisualizer() {
+    function drawOscilloscope() {
       const w = canvas.width;
       const h = canvas.height;
       ctx.clearRect(0, 0, w, h);
 
-      const activeColor = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#f59e0b';
-      const isPlaying = state.running && !state.paused;
-
-      const numWaves = 3;
-      const baseAmp = isPlaying ? (h * 0.28 * Math.max(0.15, state.volume)) : 2;
-      const speed = isPlaying ? 0.05 : 0.01;
-
-      for (let i = 0; i < numWaves; i++) {
+      // Subtle phosphor grid
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+      ctx.lineWidth = 1;
+      const gridSpacing = 20 * (window.devicePixelRatio || 1);
+      for (let x = 0; x < w; x += gridSpacing) {
         ctx.beginPath();
-        ctx.lineWidth = i === 0 ? 3 : 1.5;
-        ctx.strokeStyle = activeColor;
-        ctx.globalAlpha = i === 0 ? 0.9 : 0.4 / (i + 1);
-
-        for (let x = 0; x < w; x += 4) {
-          const freq = 0.008 + i * 0.004;
-          const y = h / 2 + Math.sin(x * freq + phase + i * 1.5) * baseAmp * Math.sin((x / w) * Math.PI);
-          if (x === 0) ctx.moveTo(x, y);
-          else ctx.lineTo(x, y);
-        }
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, h);
+        ctx.stroke();
+      }
+      for (let y = 0; y < h; y += gridSpacing) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(w, y);
         ctx.stroke();
       }
 
-      phase += speed;
-      animFrame = requestAnimationFrame(drawVisualizer);
-    }
-    drawVisualizer();
+      // Center baseline
+      ctx.strokeStyle = 'rgba(245, 158, 11, 0.15)';
+      ctx.beginPath();
+      ctx.moveTo(0, h / 2);
+      ctx.lineTo(w, h / 2);
+      ctx.stroke();
 
-    // Render sound variant cards
-    const variantsGrid = document.getElementById('variants-grid');
-    variantsGrid.innerHTML = SOUNDS.map(s => `
-      <div class="variant-card ${s.id === state.variant ? 'active' : ''}" data-variant="${s.id}">
-        <div class="variant-icon">${s.icon}</div>
-        <div class="variant-name">${s.name}</div>
-        <div class="variant-sub">${s.desc.split(' ')[0]}</div>
-      </div>
+      const isPlaying = state.running && !state.paused && !state.muted;
+      const vol = isPlaying ? Math.max(0.1, state.volume) : 0;
+      const amp = (h * 0.38) * vol;
+
+      // Primary trace
+      ctx.beginPath();
+      ctx.lineWidth = 2 * (window.devicePixelRatio || 1);
+      ctx.strokeStyle = isPlaying ? '#f59e0b' : 'rgba(255, 255, 255, 0.2)';
+      ctx.shadowColor = isPlaying ? '#f59e0b' : 'transparent';
+      ctx.shadowBlur = isPlaying ? 8 : 0;
+
+      const step = 2;
+      for (let x = 0; x < w; x += step) {
+        let y = h / 2;
+        if (isPlaying) {
+          const normX = x / w;
+          const envelope = Math.sin(normX * Math.PI); // Pin ends to center
+          
+          if (state.variant === 'White') {
+            y += (Math.random() - 0.5) * amp * envelope * 1.2;
+          } else if (state.variant === 'Pink') {
+            const low = Math.sin(x * 0.03 + phase) * amp * 0.4;
+            const noise = (Math.random() - 0.5) * amp * 0.6;
+            y += (low + noise) * envelope;
+          } else if (state.variant === 'Brown') {
+            y += Math.sin(x * 0.015 + phase) * amp * envelope + (Math.random() - 0.5) * amp * 0.25 * envelope;
+          } else if (state.variant === 'Heartbeat') {
+            const cycle = (x * 0.02 + phase * 2) % (Math.PI * 2);
+            const pulse = (cycle < 0.5 ? Math.sin(cycle * Math.PI * 2) : (cycle < 1.2 ? Math.sin((cycle - 0.6) * Math.PI * 2) * 0.5 : 0));
+            y += pulse * amp * envelope;
+          } else if (state.variant === 'Waves' || state.variant === 'Rain' || state.variant === 'Stream') {
+            const swell = Math.sin(x * 0.008 + phase * 0.5);
+            const texture = (Math.random() - 0.5) * amp * 0.35;
+            y += (swell * amp * 0.7 + texture) * envelope;
+          } else {
+            y += Math.sin(x * 0.025 + phase) * amp * envelope + (Math.random() - 0.5) * amp * 0.3 * envelope;
+          }
+        } else {
+          // Subtle idle static
+          y += (Math.random() - 0.5) * 1.5;
+        }
+
+        if (x === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+
+      phase += isPlaying ? 0.08 : 0.01;
+      requestAnimationFrame(drawOscilloscope);
+    }
+    drawOscilloscope();
+
+    // Render Sound Profiles Grid (No subtitles, clean tactile keys)
+    const soundGrid = document.getElementById('sound-grid');
+    soundGrid.innerHTML = SOUNDS.map(s => `
+      <button class="sound-key ${s.id.toLowerCase() === state.variant.toLowerCase() ? 'active' : ''}" data-variant="${s.id}">
+        <div class="sound-key-header">
+          <span class="sound-key-led"></span>
+          <span class="sound-key-num">${s.num}</span>
+        </div>
+        <div class="sound-key-name">${s.name}</div>
+      </button>
     `).join('');
 
-    variantsGrid.addEventListener('click', (e) => {
-      const card = e.target.closest('.variant-card');
-      if (!card) return;
-      const variant = card.dataset.variant;
+    soundGrid.addEventListener('click', (e) => {
+      const key = e.target.closest('.sound-key');
+      if (!key) return;
+      const variant = key.dataset.variant;
       selectVariant(variant);
     });
 
-    function updateTheme(variantName) {
-      const s = SOUNDS.find(x => x.name.toLowerCase() === variantName.toLowerCase()) || SOUNDS[0];
-      document.documentElement.style.setProperty('--accent', s.color);
-      document.documentElement.style.setProperty('--accent-glow', s.glow);
-      document.getElementById('hero-icon').textContent = s.icon;
-      document.getElementById('hero-title').textContent = s.name + ' Noise';
-      document.getElementById('hero-desc').textContent = s.desc;
-
-      document.querySelectorAll('.variant-card').forEach(card => {
-        card.classList.toggle('active', card.dataset.variant.toLowerCase() === variantName.toLowerCase());
-      });
+    function selectVariant(variant) {
+      state.variant = variant;
+      sendCommand('play', { variant, volume: state.volume });
     }
 
     function updateUI() {
-      updateTheme(state.variant);
+      // Sound Keys active state
+      document.querySelectorAll('.sound-key').forEach(k => {
+        k.classList.toggle('active', k.dataset.variant.toLowerCase() === state.variant.toLowerCase());
+      });
 
-      const statusDot = document.getElementById('status-dot');
-      const statusText = document.getElementById('status-text');
+      // Status indicator
+      const dot = document.getElementById('status-dot');
+      const st = document.getElementById('status-text');
+      const playText = document.getElementById('play-text');
+      const playBtn = document.getElementById('btn-play-pause');
       const playIcon = document.getElementById('play-icon');
 
+      document.getElementById('hero-title').textContent = state.variant.toUpperCase();
+
       if (state.running && !state.paused) {
-        statusDot.className = 'status-dot active';
-        statusText.textContent = `Playing: ${state.variant}`;
-        playIcon.innerHTML = '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>'; // Pause icon
+        dot.className = 'led-dot active';
+        st.textContent = 'ONLINE • ACTIVE';
+        playText.textContent = 'PAUSE';
+        playBtn.classList.add('active');
+        playIcon.innerHTML = '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>';
       } else if (state.running && state.paused) {
-        statusDot.className = 'status-dot paused';
-        statusText.textContent = 'Paused';
-        playIcon.innerHTML = '<path d="M8 5v14l11-7z"/>'; // Play icon
+        dot.className = 'led-dot paused';
+        st.textContent = 'PAUSED';
+        playText.textContent = 'RESUME';
+        playBtn.classList.remove('active');
+        playIcon.innerHTML = '<path d="M8 5v14l11-7z"/>';
       } else {
-        statusDot.className = 'status-dot';
-        statusText.textContent = 'Off';
-        playIcon.innerHTML = '<path d="M8 5v14l11-7z"/>'; // Play icon
+        dot.className = 'led-dot';
+        st.textContent = 'STANDBY';
+        playText.textContent = 'PLAY';
+        playBtn.classList.remove('active');
+        playIcon.innerHTML = '<path d="M8 5v14l11-7z"/>';
       }
 
-      // Volume
+      // Mute state
+      const muteBtn = document.getElementById('btn-mute');
+      muteBtn.classList.toggle('active', state.muted);
+
+      // Volume readout & slider
       const volSlider = document.getElementById('volume-slider');
       const volVal = document.getElementById('volume-val');
       const volPct = Math.round(state.volume * 100);
       volSlider.value = volPct;
       volVal.textContent = volPct + '%';
 
-      // Tone
+      // Tone readout & slider
       const toneSlider = document.getElementById('tone-slider');
       const toneVal = document.getElementById('tone-val');
       const tonePct = Math.round(state.tone * 100);
       toneSlider.value = tonePct;
       toneVal.textContent = tonePct + '%';
 
-      // Sleep Timer Chips
+      // Sleep Timer
       const timerVal = document.getElementById('timer-val');
-      timerVal.textContent = state.sleep_timer > 0 ? `${Math.round(state.sleep_timer)} min` : 'Off';
-      document.querySelectorAll('#timer-chips .chip').forEach(c => {
-        const mins = parseFloat(c.dataset.mins);
-        c.classList.toggle('active', Math.abs(mins - state.sleep_timer) < 1);
+      const timerMins = Math.round(state.sleep_timer);
+      timerVal.textContent = timerMins > 0 ? `${timerMins} MIN` : 'OFF';
+      document.querySelectorAll('#timer-chips .seg-item').forEach(btn => {
+        const m = parseFloat(btn.dataset.mins);
+        btn.classList.toggle('active', Math.abs(m - state.sleep_timer) < 1);
       });
 
-      // Timer countdown badge
-      const cdBadge = document.getElementById('timer-countdown');
+      const timerCountdown = document.getElementById('timer-countdown');
+      const timerCdVal = document.getElementById('timer-countdown-val');
       if (state.running && state.sleep_timer > 0) {
-        cdBadge.style.display = 'inline-flex';
-        document.getElementById('timer-countdown-val').textContent = `${Math.round(state.sleep_timer)}m`;
+        timerCountdown.style.display = 'block';
+        timerCdVal.textContent = `${timerMins}M`;
       } else {
-        cdBadge.style.display = 'none';
-      }
-
-      // Mute icon
-      const muteIcon = document.getElementById('mute-icon');
-      if (state.muted) {
-        muteIcon.innerHTML = '<path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>';
-      } else {
-        muteIcon.innerHTML = '<path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>';
+        timerCountdown.style.display = 'none';
       }
     }
 
-    // Direct Noise Control API
+    // Direct Control API
     async function sendCommand(action, params = {}) {
-      // Optimistic local update for instant responsive feedback
       if (action === 'play') {
         state.running = true;
         state.paused = false;
@@ -856,47 +1024,31 @@
           }
         }
       } catch (err) {
-        console.warn('API call failed, falling back to ESPHome REST endpoints', err);
+        console.warn('API error, falling back to REST', err);
         fallbackRest(action, params);
       }
     }
 
-    // Fallback standard ESPHome REST endpoints
     function fallbackRest(action, params) {
       if (action === 'play' || action === 'resume') {
-        const soundSelect = entities.find(e => e.type === 'select' && e.name.toLowerCase().includes('noise'));
-        if (soundSelect) {
-          fetch(`/select/${soundSelect.object_id}/set?option=${encodeURIComponent(params.variant || state.variant)}`, { method: 'POST' });
-        }
+        const sel = entities.find(e => e.type === 'select' && e.name.toLowerCase().includes('noise'));
+        if (sel) fetch(`/select/${sel.object_id}/set?option=${encodeURIComponent(params.variant || state.variant)}`, { method: 'POST' });
       } else if (action === 'stop') {
-        const soundSelect = entities.find(e => e.type === 'select' && e.name.toLowerCase().includes('noise'));
-        if (soundSelect) {
-          fetch(`/select/${soundSelect.object_id}/set?option=Off`, { method: 'POST' });
-        }
+        const sel = entities.find(e => e.type === 'select' && e.name.toLowerCase().includes('noise'));
+        if (sel) fetch(`/select/${sel.object_id}/set?option=Off`, { method: 'POST' });
       } else if (action === 'volume') {
-        const volNum = entities.find(e => e.type === 'number' && e.name.toLowerCase().includes('volume'));
-        if (volNum) {
-          fetch(`/number/${volNum.object_id}/set?value=${Math.round(params.value * 100)}`, { method: 'POST' });
-        }
+        const num = entities.find(e => e.type === 'number' && e.name.toLowerCase().includes('volume'));
+        if (num) fetch(`/number/${num.object_id}/set?value=${Math.round(params.value * 100)}`, { method: 'POST' });
       } else if (action === 'tone') {
-        const toneNum = entities.find(e => e.type === 'number' && e.name.toLowerCase().includes('tone'));
-        if (toneNum) {
-          fetch(`/number/${toneNum.object_id}/set?value=${Math.round(params.value * 100)}`, { method: 'POST' });
-        }
+        const num = entities.find(e => e.type === 'number' && e.name.toLowerCase().includes('tone'));
+        if (num) fetch(`/number/${num.object_id}/set?value=${Math.round(params.value * 100)}`, { method: 'POST' });
       } else if (action === 'sleep_timer') {
-        const timerNum = entities.find(e => e.type === 'number' && e.name.toLowerCase().includes('timer'));
-        if (timerNum) {
-          fetch(`/number/${timerNum.object_id}/set?value=${params.minutes}`, { method: 'POST' });
-        }
+        const num = entities.find(e => e.type === 'number' && e.name.toLowerCase().includes('timer'));
+        if (num) fetch(`/number/${num.object_id}/set?value=${params.minutes}`, { method: 'POST' });
       }
     }
 
-    function selectVariant(variant) {
-      state.variant = variant;
-      sendCommand('play', { variant, volume: state.volume });
-    }
-
-    // Hero button listeners
+    // Transport buttons
     document.getElementById('btn-play-pause').addEventListener('click', () => {
       if (state.running && !state.paused) {
         sendCommand('pause');
@@ -906,66 +1058,55 @@
         sendCommand('play', { variant: state.variant, volume: state.volume });
       }
     });
+    document.getElementById('btn-power').addEventListener('click', () => sendCommand('stop'));
+    document.getElementById('btn-mute').addEventListener('click', () => sendCommand('mute'));
 
-    document.getElementById('btn-power').addEventListener('click', () => {
-      sendCommand('stop');
-    });
-
-    document.getElementById('btn-mute').addEventListener('click', () => {
-      sendCommand('mute');
-    });
-
-    // Volume Slider
+    // Volume Slider & Steppers
     const volSlider = document.getElementById('volume-slider');
     volSlider.addEventListener('input', (e) => {
-      const val = parseFloat(e.target.value) / 100;
-      state.volume = val;
+      state.volume = parseFloat(e.target.value) / 100;
       document.getElementById('volume-val').textContent = e.target.value + '%';
     });
     volSlider.addEventListener('change', (e) => {
-      const val = parseFloat(e.target.value) / 100;
-      sendCommand('volume', { value: val });
+      sendCommand('volume', { value: parseFloat(e.target.value) / 100 });
     });
-
     document.getElementById('vol-down').addEventListener('click', () => {
-      const newVol = Math.max(0, state.volume - 0.1);
-      state.volume = newVol;
-      sendCommand('volume', { value: newVol });
+      const v = Math.max(0, Math.round((state.volume - 0.05) * 100) / 100);
+      state.volume = v;
+      sendCommand('volume', { value: v });
     });
     document.getElementById('vol-up').addEventListener('click', () => {
-      const newVol = Math.min(1.0, state.volume + 0.1);
-      state.volume = newVol;
-      sendCommand('volume', { value: newVol });
+      const v = Math.min(1.0, Math.round((state.volume + 0.05) * 100) / 100);
+      state.volume = v;
+      sendCommand('volume', { value: v });
     });
 
     // Tone Slider
     const toneSlider = document.getElementById('tone-slider');
     toneSlider.addEventListener('input', (e) => {
-      const val = parseFloat(e.target.value) / 100;
-      state.tone = val;
+      state.tone = parseFloat(e.target.value) / 100;
       document.getElementById('tone-val').textContent = e.target.value + '%';
     });
     toneSlider.addEventListener('change', (e) => {
-      const val = parseFloat(e.target.value) / 100;
-      sendCommand('tone', { value: val });
+      sendCommand('tone', { value: parseFloat(e.target.value) / 100 });
     });
 
-    // Sleep Timer Chips
+    // Sleep Timer Segmented Selector
     document.getElementById('timer-chips').addEventListener('click', (e) => {
-      const chip = e.target.closest('.chip');
-      if (!chip) return;
-      const mins = parseFloat(chip.dataset.mins);
+      const item = e.target.closest('.seg-item');
+      if (!item) return;
+      const mins = parseFloat(item.dataset.mins);
       state.sleep_timer = mins;
       sendCommand('sleep_timer', { minutes: mins });
     });
 
-    // Preset cards
-    document.querySelectorAll('.preset-card').forEach(card => {
-      card.addEventListener('click', () => {
-        const p = card.dataset.preset;
+    // Presets (Memory Banks M1-M4)
+    document.querySelectorAll('.preset-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const p = btn.dataset.preset;
         if (p === 'sleep') {
           sendCommand('play', { variant: 'Brown', volume: 0.75 });
-          sendCommand('tone', { value: 0.4 });
+          sendCommand('tone', { value: 0.45 });
           sendCommand('sleep_timer', { minutes: 45 });
         } else if (p === 'rain') {
           sendCommand('play', { variant: 'Rain', volume: 0.70 });
@@ -975,7 +1116,7 @@
           sendCommand('play', { variant: 'Pink', volume: 0.60 });
           sendCommand('tone', { value: 0.85 });
           sendCommand('sleep_timer', { minutes: 90 });
-        } else if (p === 'calm') {
+        } else if (p === 'surf') {
           sendCommand('play', { variant: 'Waves', volume: 0.65 });
           sendCommand('tone', { value: 0.60 });
           sendCommand('sleep_timer', { minutes: 30 });
@@ -983,7 +1124,7 @@
       });
     });
 
-    // All Components Drawer (webserver-listcomponents)
+    // Hardware Peripherals Drawer (webserver-listcomponents)
     const compCard = document.getElementById('components-card');
     document.getElementById('components-toggle').addEventListener('click', () => {
       compCard.classList.toggle('open');
@@ -992,11 +1133,9 @@
     async function loadComponents() {
       if (isMock) {
         entities = [
-          { key: 'sensor-temp', object_id: 'bedroom_temperature', name: 'Bedroom Temperature', type: 'sensor', state: '21.8 °C' },
-          { key: 'sensor-humidity', object_id: 'bedroom_humidity', name: 'Bedroom Humidity', type: 'sensor', state: '45 %' },
-          { key: 'switch-nightlight', object_id: 'nightlight', name: 'Nightlight', type: 'switch', state: 'OFF' },
-          { key: 'binary_sensor-wifi', object_id: 'wifi_status', name: 'WiFi Connected', type: 'binary_sensor', state: 'ON' },
-          { key: 'button-restart', object_id: 'restart_button', name: 'Restart Device', type: 'button' },
+          { key: 'sensor-temp', object_id: 'temperature', name: 'Room Temperature', type: 'sensor', state: '22.4 °C' },
+          { key: 'switch-speaker', object_id: 'mute_switch', name: 'Mute Circuit', type: 'switch', state: 'OFF' },
+          { key: 'button-reset', object_id: 'factory_reset', name: 'Factory Reset', type: 'button' }
         ];
         renderComponents();
         return;
@@ -1008,96 +1147,81 @@
           const data = await res.json();
           if (data && data.components) {
             entities = data.components;
-            document.getElementById('components-subtitle').textContent = 'Live from webserver-listcomponents';
             renderComponents();
           }
         }
       } catch (err) {
-        console.log('webserver-listcomponents not found or failed, listening to /events', err);
+        console.log('Unable to load /components', err);
       }
     }
 
     function renderComponents(filter = '') {
       const list = document.getElementById('components-list');
       const filtered = entities.filter(e => {
-        // Exclude noise machine internal entities from the general list if desired, or keep all
         if (!filter) return true;
         const q = filter.toLowerCase();
         return e.name.toLowerCase().includes(q) || e.object_id.toLowerCase().includes(q) || e.type.toLowerCase().includes(q);
       });
 
-      document.getElementById('components-count').textContent = `${entities.length} items`;
+      document.getElementById('components-count').textContent = `${entities.length} ENTITIES`;
 
       if (filtered.length === 0) {
-        list.innerHTML = '<div style="text-align:center; padding:12px; color:var(--text-dim); font-size:0.8rem;">No components matching search</div>';
+        list.innerHTML = '<div style="font-family:var(--font-mono); font-size:0.7rem; color:var(--text-tertiary); text-align:center; padding:10px;">NO MATCHES</div>';
         return;
       }
 
       list.innerHTML = filtered.map(e => {
-        let control = '';
+        let ctrl = '';
         if (e.type === 'switch' || e.type === 'light') {
           const isOn = (e.state || '').toUpperCase() === 'ON';
-          control = `<div class="switch-toggle ${isOn ? 'on' : ''}" data-type="${e.type}" data-id="${e.object_id}"></div>`;
+          ctrl = `<div class="mini-switch ${isOn ? 'on' : ''}" data-type="${e.type}" data-id="${e.object_id}"></div>`;
         } else if (e.type === 'button') {
-          control = `<button class="btn-press" data-type="${e.type}" data-id="${e.object_id}">Press</button>`;
-        } else if (e.type === 'sensor' || e.type === 'binary_sensor' || e.type === 'text_sensor') {
-          control = `<span style="font-weight:700; color:var(--text-main); font-size:0.85rem;">${e.state || '--'}</span>`;
+          ctrl = `<button class="mini-press" data-type="${e.type}" data-id="${e.object_id}">EXEC</button>`;
         } else {
-          control = `<span style="color:var(--text-dim); font-size:0.75rem;">${e.state || e.type}</span>`;
+          ctrl = `<span style="font-family:var(--font-mono); font-weight:700; color:var(--text-primary); font-size:0.75rem;">${e.state || '--'}</span>`;
         }
 
         return `
-          <div class="entity-item">
-            <div class="entity-info">
+          <div class="entity-row">
+            <div class="entity-desc">
               <div class="entity-name">${e.name}</div>
-              <div class="entity-id">${e.type} • ${e.object_id}</div>
+              <div class="entity-meta">${e.type.toUpperCase()} • ${e.object_id}</div>
             </div>
-            <div class="entity-control">${control}</div>
+            <div>${ctrl}</div>
           </div>
         `;
       }).join('');
     }
 
-    // Search filter
     document.getElementById('components-search').addEventListener('input', (e) => {
       renderComponents(e.target.value);
     });
 
-    // Control components
     document.getElementById('components-list').addEventListener('click', (e) => {
-      const toggle = e.target.closest('.switch-toggle');
-      if (toggle) {
-        const type = toggle.dataset.type;
-        const id = toggle.dataset.id;
-        toggle.classList.toggle('on');
-        if (!isMock) {
-          fetch(`/${type}/${id}/toggle`, { method: 'POST' });
-        }
+      const sw = e.target.closest('.mini-switch');
+      if (sw) {
+        const type = sw.dataset.type;
+        const id = sw.dataset.id;
+        sw.classList.toggle('on');
+        if (!isMock) fetch(`/${type}/${id}/toggle`, { method: 'POST' });
         return;
       }
-
-      const pressBtn = e.target.closest('.btn-press');
-      if (pressBtn) {
-        const type = pressBtn.dataset.type;
-        const id = pressBtn.dataset.id;
-        if (!isMock) {
-          fetch(`/${type}/${id}/press`, { method: 'POST' });
-        }
+      const btn = e.target.closest('.mini-press');
+      if (btn) {
+        const type = btn.dataset.type;
+        const id = btn.dataset.id;
+        if (!isMock) fetch(`/${type}/${id}/press`, { method: 'POST' });
       }
     });
 
-    // Connect to ESPHome Server-Sent Events (/events)
+    // Live Event Sync via ESPHome SSE (/events)
     function connectEvents() {
       if (isMock) return;
 
       const evtSource = new EventSource('/events');
-      evtSource.onopen = () => {
-        console.log('SSE connected');
-      };
       evtSource.addEventListener('state', (e) => {
         try {
           const data = JSON.parse(e.data);
-          // Handle noise specific updates
           if (data.id && data.id.includes('noise')) {
             if (data.id.includes('select')) {
               if (data.state === 'Off') {
@@ -1116,37 +1240,21 @@
             updateUI();
           }
 
-          // Update general component list
           const existing = entities.find(x => x.key === data.id || x.object_id === (data.id.split('-')[1] || data.id));
           if (existing) {
             existing.state = data.state || (data.value !== undefined ? data.value : '');
             renderComponents(document.getElementById('components-search').value);
-          } else if (data.name && data.id) {
-            // Discovered entity via SSE
-            const type = data.id.split('-')[0] || 'unknown';
-            const objId = data.id.replace(/^[a-z_]+-/, '');
-            entities.push({
-              key: data.id,
-              object_id: objId,
-              name: data.name,
-              type: type,
-              state: data.state || (data.value !== undefined ? data.value : '')
-            });
-            renderComponents(document.getElementById('components-search').value);
           }
-        } catch (err) {
-          console.warn('Error parsing SSE event', err);
-        }
+        } catch (err) {}
       });
 
       evtSource.onerror = () => {
-        console.warn('SSE stream disconnected, polling fallback');
         evtSource.close();
         setTimeout(connectEvents, 5000);
       };
     }
 
-    // Initial load
+    // Initial Load
     async function init() {
       if (!isMock) {
         try {
@@ -1162,9 +1270,7 @@
               document.getElementById('components-card').style.display = 'none';
             }
           }
-        } catch (err) {
-          console.log('Direct noise state poll failed', err);
-        }
+        } catch (err) {}
       }
       updateUI();
       loadComponents();
