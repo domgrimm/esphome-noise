@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Noise Machine</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌊</text></svg>">
   <style>
     :root {
       --bg-main: #0a0d14;
@@ -817,40 +818,42 @@
 
     // Direct Noise Control API
     async function sendCommand(action, params = {}) {
-      if (isMock) {
-        if (action === 'play') {
-          state.running = true;
-          state.paused = false;
-          if (params.variant) state.variant = params.variant;
-          if (params.volume !== undefined) state.volume = params.volume;
-        } else if (action === 'stop') {
-          state.running = false;
-          state.paused = false;
-        } else if (action === 'pause') {
-          state.paused = true;
-        } else if (action === 'resume') {
-          state.running = true;
-          state.paused = false;
-        } else if (action === 'volume') {
-          state.volume = params.value;
-        } else if (action === 'tone') {
-          state.tone = params.value;
-        } else if (action === 'sleep_timer') {
-          state.sleep_timer = params.minutes;
-        } else if (action === 'mute') {
-          state.muted = !state.muted;
-        }
-        updateUI();
-        return;
+      // Optimistic local update for instant responsive feedback
+      if (action === 'play') {
+        state.running = true;
+        state.paused = false;
+        if (params.variant) state.variant = params.variant;
+        if (params.volume !== undefined) state.volume = params.volume;
+      } else if (action === 'stop') {
+        state.running = false;
+        state.paused = false;
+      } else if (action === 'pause') {
+        state.paused = true;
+      } else if (action === 'resume') {
+        state.running = true;
+        state.paused = false;
+      } else if (action === 'volume') {
+        state.volume = params.value;
+      } else if (action === 'tone') {
+        state.tone = params.value;
+      } else if (action === 'sleep_timer') {
+        state.sleep_timer = params.minutes;
+      } else if (action === 'mute') {
+        state.muted = !state.muted;
       }
+      updateUI();
+
+      if (isMock) return;
 
       const body = new URLSearchParams({ action, ...params });
       try {
         const res = await fetch('/api/noise', { method: 'POST', body });
         if (res.ok) {
           const json = await res.json();
-          Object.assign(state, json);
-          updateUI();
+          if (json && !json.success) {
+            Object.assign(state, json);
+            updateUI();
+          }
         }
       } catch (err) {
         console.warn('API call failed, falling back to ESPHome REST endpoints', err);
