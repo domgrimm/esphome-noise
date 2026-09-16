@@ -215,8 +215,8 @@ void NoiseComponent::loop() {
       float cur_val = 0.0f;
       if (this->running_ && this->max_samples_ > 0 && this->time_smp_ < this->max_samples_) {
         float remaining_sec = static_cast<float>(this->max_samples_ - this->time_smp_) / static_cast<float>(this->rate_);
-        if (this->time_left_sensor_->get_unit_of_measurement() == "s" ||
-            this->time_left_sensor_->get_unit_of_measurement() == "sec") {
+        const auto &unit = this->time_left_sensor_->get_unit_of_measurement_ref();
+        if (unit == "s" || unit == "sec") {
           cur_val = std::ceil(remaining_sec);
         } else {
           cur_val = std::ceil(remaining_sec / 60.0f);
