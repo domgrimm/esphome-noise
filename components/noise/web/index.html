@@ -412,6 +412,43 @@
       opacity: 0.9;
     }
 
+    /* Time Left Display */
+    .time-left-display {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--card-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 8px 12px;
+      margin-bottom: 8px;
+    }
+    .time-left-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.72rem;
+      font-weight: 500;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .time-left-icon {
+      width: 13px;
+      height: 13px;
+      fill: var(--text-dim);
+    }
+    .time-left-value {
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      letter-spacing: -0.01em;
+    }
+    .time-left-value.active {
+      color: var(--text-main);
+    }
+
     /* Components Drawer */
     .components-card {
       padding: 0;
@@ -628,6 +665,13 @@
           <span>Sleep Timer</span>
           <span class="control-val" id="timer-val">Off</span>
         </div>
+        <div class="time-left-display" id="time-left-display">
+          <div class="time-left-label">
+            <svg class="time-left-icon" viewBox="0 0 24 24"><path d="M6 2v6h.01L6 8.01 10 12l-4 4 .01.01H6V22h12v-5.99h-.01L18 16l-4-4 4-3.99-.01-.01H18V2H6zm10 14.5V20H8v-3.5l4-4 4 4zm-4-5l-4-4V4h8v3.5l-4 4z"/></svg>
+            <span>Time Left</span>
+          </div>
+          <div class="time-left-value" id="time-left-val">Off</div>
+        </div>
         <div class="segmented-group" id="timer-chips">
           <button class="seg-btn active" data-mins="0">Off</button>
           <button class="seg-btn" data-mins="15">15m</button>
@@ -756,24 +800,38 @@
         document.getElementById('tone-val').textContent = tonePct + '%';
       }
 
-      // Timer
+      // Timer & Time Left Display
       const PRESETS = [0, 15, 30, 45, 60, 90, 120];
       const timerMins = Math.round(state.sleep_timer);
       const isPreset = PRESETS.some(p => Math.abs(p - state.sleep_timer) < 0.5);
 
       const timerVal = document.getElementById('timer-val');
-      if (state.sleep_timer > 0) {
-        if (state.running && state.sleep_timer_remaining > 0) {
-          const remSec = state.sleep_timer_remaining;
-          const m = Math.floor(remSec / 60);
+      timerVal.textContent = timerMins > 0 ? `${timerMins}m` : 'Off';
+
+      const timeLeftVal = document.getElementById('time-left-val');
+      if (state.sleep_timer > 0 && state.running) {
+        const remSec = state.sleep_timer_remaining;
+        if (remSec > 0) {
+          const h = Math.floor(remSec / 3600);
+          const m = Math.floor((remSec % 3600) / 60);
           const s = Math.floor(remSec % 60);
-          const timeStr = m > 0 ? `${m}m left` : `${s}s left`;
-          timerVal.textContent = `${timeStr} (${timerMins}m)`;
+          let formatted = '';
+          if (h > 0) {
+            formatted = `${h}h ${m}m ${s}s`;
+          } else if (m > 0) {
+            formatted = `${m}m ${s}s`;
+          } else {
+            formatted = `${s}s`;
+          }
+          timeLeftVal.textContent = formatted;
+          timeLeftVal.classList.add('active');
         } else {
-          timerVal.textContent = `${timerMins}m`;
+          timeLeftVal.textContent = '< 1s';
+          timeLeftVal.classList.add('active');
         }
       } else {
-        timerVal.textContent = 'Off';
+        timeLeftVal.textContent = 'Off';
+        timeLeftVal.classList.remove('active');
       }
 
       const customChip = document.getElementById('custom-timer-chip');

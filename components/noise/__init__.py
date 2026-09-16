@@ -1,7 +1,7 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
 from esphome import automation, core
-from esphome.components import media_player, number, select, speaker, web_server_base
+from esphome.components import media_player, number, select, sensor, speaker, web_server_base
 from esphome.components.web_server_base import CONF_WEB_SERVER_BASE_ID
 from esphome.const import (
     CONF_CHANNELS,
@@ -41,6 +41,8 @@ def AUTO_LOAD(config):
             or CONF_SLEEP_TIMER in conf
         ):
             loads.add("number")
+        if CONF_TIME_LEFT in conf:
+            loads.add("sensor")
         if CONF_WEB_SERVER in conf and conf[CONF_WEB_SERVER]:
             loads.add("web_server_base")
     return list(loads)
@@ -89,6 +91,7 @@ CONF_DUCK_LEVEL = "duck_level"
 CONF_SELECT = "select"
 CONF_TONE = "tone"
 CONF_SLEEP_TIMER = "sleep_timer"
+CONF_TIME_LEFT = "time_left"
 CONF_INITIAL_VOLUME = "initial_volume"
 CONF_FADE_IN_TIME = "fade_in_time"
 CONF_FADE_OUT_TIME = "fade_out_time"
@@ -180,6 +183,13 @@ CONFIG_SCHEMA = cv.All(
                     cv.Optional(CONF_STEP, default=1.0): cv.float_,
                 }
             ),
+            cv.Optional(CONF_TIME_LEFT): sensor.sensor_schema(
+                unit_of_measurement="min",
+                icon="mdi:timer-sand",
+                device_class="duration",
+                state_class="measurement",
+                accuracy_decimals=0,
+            ),
             cv.Optional(CONF_ON_PLAY): automation.validate_automation(automation.AUTOMATION_SCHEMA),
             cv.Optional(CONF_ON_STOP): automation.validate_automation(automation.AUTOMATION_SCHEMA),
             cv.Optional(CONF_ON_VARIANT_CHANGED): automation.validate_automation(automation.AUTOMATION_SCHEMA),
@@ -269,6 +279,11 @@ async def to_code(config):
         )
         cg.add(timer_var.set_parent(var))
         cg.add(var.set_sleep_timer_number(timer_var))
+
+    if CONF_TIME_LEFT in config:
+        cg.add_define("USE_SENSOR")
+        time_left_var = await sensor.new_sensor(config[CONF_TIME_LEFT])
+        cg.add(var.set_time_left_sensor(time_left_var))
 
     if CONF_WEB_SERVER in config and config[CONF_WEB_SERVER] is not None:
         cg.add_define("USE_NOISE_WEB_SERVER")

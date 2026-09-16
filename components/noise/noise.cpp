@@ -199,6 +199,36 @@ void NoiseComponent::setup() {
     this->media_player_->publish_state();
   }
 #endif
+#ifdef USE_SENSOR
+  if (this->time_left_sensor_ != nullptr) {
+    this->time_left_sensor_->publish_state(0.0f);
+  }
+#endif
+}
+
+void NoiseComponent::loop() {
+#ifdef USE_SENSOR
+  if (this->time_left_sensor_ != nullptr) {
+    uint32_t now = millis();
+    if (now - this->last_time_left_check_ms_ >= 500) {
+      this->last_time_left_check_ms_ = now;
+      float cur_val = 0.0f;
+      if (this->running_ && this->max_samples_ > 0 && this->time_smp_ < this->max_samples_) {
+        float remaining_sec = static_cast<float>(this->max_samples_ - this->time_smp_) / static_cast<float>(this->rate_);
+        if (this->time_left_sensor_->get_unit_of_measurement() == "s" ||
+            this->time_left_sensor_->get_unit_of_measurement() == "sec") {
+          cur_val = std::ceil(remaining_sec);
+        } else {
+          cur_val = std::ceil(remaining_sec / 60.0f);
+        }
+      }
+      if (cur_val != this->last_time_left_published_) {
+        this->last_time_left_published_ = cur_val;
+        this->time_left_sensor_->publish_state(cur_val);
+      }
+    }
+  }
+#endif
 }
 
 void NoiseComponent::dump_config() {
@@ -505,6 +535,11 @@ void NoiseComponent::stop() {
     this->media_player_->publish_state();
   }
 #endif
+#ifdef USE_SENSOR
+  this->last_time_left_published_ = 0.0f;
+  if (this->time_left_sensor_ != nullptr)
+    this->time_left_sensor_->publish_state(0.0f);
+#endif
   this->stop_callback_.call();
   ESP_LOGI(TAG, "Noise stopping (fade-out initiated)");
 }
@@ -525,6 +560,11 @@ void NoiseComponent::finish_() {
     this->sleep_timer_minutes_ = 0.0f;
     if (this->sleep_timer_number_ != nullptr)
       this->sleep_timer_number_->publish_state(0.0f);
+#endif
+#ifdef USE_SENSOR
+    this->last_time_left_published_ = 0.0f;
+    if (this->time_left_sensor_ != nullptr)
+      this->time_left_sensor_->publish_state(0.0f);
 #endif
     this->stop_callback_.call();
   });

@@ -12,6 +12,9 @@
 #ifdef USE_SELECT
 #include "esphome/components/select/select.h"
 #endif
+#ifdef USE_SENSOR
+#include "esphome/components/sensor/sensor.h"
+#endif
 #include "esphome/components/speaker/speaker.h"
 
 #include "freertos/FreeRTOS.h"
@@ -114,7 +117,7 @@ class NoiseComponent : public Component {
   using Component::defer;
 
   void setup() override;
-  void loop() override {}
+  void loop() override;
   void dump_config() override;
 
   void set_speaker(speaker::Speaker *speaker) { this->speaker_ = speaker; }
@@ -149,6 +152,9 @@ class NoiseComponent : public Component {
   void set_volume_number(number::Number *num) { this->volume_number_ = num; }
   void set_tone_number(number::Number *num) { this->tone_number_ = num; }
   void set_sleep_timer_number(number::Number *num) { this->sleep_timer_number_ = num; }
+#endif
+#ifdef USE_SENSOR
+  void set_time_left_sensor(sensor::Sensor *sensor) { this->time_left_sensor_ = sensor; }
 #endif
 
   void play(const std::string &variant, uint32_t duration_ms = 0, optional<float> volume = {});
@@ -208,6 +214,11 @@ class NoiseComponent : public Component {
   number::Number *volume_number_{nullptr};
   number::Number *tone_number_{nullptr};
   number::Number *sleep_timer_number_{nullptr};
+#endif
+#ifdef USE_SENSOR
+  sensor::Sensor *time_left_sensor_{nullptr};
+  float last_time_left_published_{-1.0f};
+  uint32_t last_time_left_check_ms_{0};
 #endif
 
   int sample_rate_config_{0};
