@@ -551,8 +551,17 @@ void NoiseComponent::task_loop_() {
     } else
 #endif
     if (this->speaker_ != nullptr) {
-      this->speaker_->play(reinterpret_cast<uint8_t *>(this->pcm_.data()),
-                           this->pcm_.size() * sizeof(int16_t), pdMS_TO_TICKS(20));
+      size_t to_write = this->pcm_.size() * sizeof(int16_t);
+      const uint8_t *ptr = reinterpret_cast<const uint8_t *>(this->pcm_.data());
+      while (to_write > 0 && !this->stop_req_) {
+        size_t written = this->speaker_->play(ptr, to_write, pdMS_TO_TICKS(20));
+        if (written > 0) {
+          ptr += written;
+          to_write -= written;
+        } else {
+          vTaskDelay(pdMS_TO_TICKS(2));
+        }
+      }
     }
 
     // If stop requested and faded down to silence: exit task loop cleanly
