@@ -13,14 +13,15 @@ Hardware-agnostic: binds to any standard ESPHome `speaker` platform (I2S DAC, in
 - **True Spatial Stereo**: When running on stereo speakers (`channels: 2` or AirPlay), Left and Right channels use independent PRNG generators and decorrelated phase LFOs for a wide, immersive spatial soundstage.
 - **AirPlay 2 Compatibility**: Direct output to [`henriklied/esphome-airplay2`](https://github.com/henriklied/esphome-airplay2) receivers without I2S pin conflicts. Automatically yields and pauses during AirPlay music streams, then smoothly resumes when music stops.
 - **Multi-Source Audio Coordination**: Automatically duck or pause background noise whenever other media players, announcements, or voice assistant pipelines on the device become active.
-- **Mobile-First Interactive Web Dashboard**: Optional route-hijacking rewrite of ESPHome's web server at `/`. Delivers a sleek dark-mode, touch-optimized dashboard dedicated to the sound machine with an animated audio visualizer, 12 tactile sound profile cards, smooth volume & tone sliders, sleep timer with live countdown, and one-tap quick presets.
+- **Mobile-First Interactive Web Dashboard**: Optional route-hijacking rewrite of ESPHome's web server at `/`. Delivers a sleek dark-mode, touch-optimized dashboard dedicated to the sound machine with 12 tactile sound profile cards, smooth volume & tone sliders, sleep timer with live countdown, and one-tap quick presets.
 - **Full `webserver-listcomponents` Compatibility**: Seamlessly compatible with [`esphome-webserver-listcomponents`](https://github.com/domgrimm/esphome-webserver-listcomponents). All device entities (sensors, switches, lights, numbers, etc.) remain fully surfaced in an interactive, collapsible components drawer with live SSE synchronization, while `/components` API requests remain unintercepted.
 - **Rich Home Assistant Entities**:
   - `select`: Sound selector (`Off`, `White`, `Pink`, ..., `Rain`, `Campfire`, `Heartbeat`).
   - `media_player`: Native Home Assistant media player card integration with Play, Pause, Stop, Volume slider, and Power controls.
   - `volume` (`number`): Independent volume control (0–100%) without altering speaker hardware master gain.
   - `tone` (`number`): Acoustic low-pass filter (0–100%) to dial in deep mellow warmth vs. crisp presence.
-  - `sleep_timer` (`number`): Configurable auto-off timer (0–180 minutes).
+  - `sleep_timer` (`number`): Configurable auto-off timer (0–1440 minutes).
+  - `time_left` (`sensor`): Real-time countdown timer showing remaining minutes before auto-shutoff.
 - **ESP32 Multicore Optimized**: Audio synthesis task is automatically pinned to Core 0 on dual-core chips, leaving Core 1 free for WiFi, ESPHome main loop, and microWakeWord detection.
 
 ---
@@ -146,7 +147,8 @@ When an external player starts playing, `esphome-noise` smoothly ramps down. Whe
 | `media_player` | Optional, Schema | | Auto-creates a `media_player` entity with Play/Pause/Stop/Volume/Power controls. |
 | `volume` | Optional, Schema | | Auto-creates a `number` entity (0%–100%) for internal volume gain. |
 | `tone` | Optional, Schema | | Auto-creates a `number` entity (0%–100%) for the acoustic low-pass filter. |
-| `sleep_timer` | Optional, Schema | | Auto-creates a `number` entity (0–180 min) for automatic off timers. |
+| `sleep_timer` | Optional, Schema | | Auto-creates a `number` entity (0–1440 min) for automatic off timers. |
+| `time_left` | Optional, Schema | | Auto-creates a `sensor` entity (duration in min) for remaining sleep timer countdown. |
 | `web_server` | Optional, boolean or Schema | | Optional mobile-first interactive dashboard rewrite at `/`. |
 | `on_play` | Optional, Automation | | Triggered when noise starts playing. |
 | `on_stop` | Optional, Automation | | Triggered when noise stops. |
@@ -209,17 +211,25 @@ Adjusts the acoustic low-pass filter (0% = warm & deep rumble, 100% = crisp full
     tone: 40%  # 0% to 100% (templatable)
 ```
 
+### `noise.set_sleep_timer`
+Sets the auto-off sleep timer duration in minutes (`0` cancels the active timer):
+```yaml
+- noise.set_sleep_timer:
+    id: my_noise
+    sleep_timer: 45  # Duration in minutes (templatable)
+```
+
 ---
 
 ## Mobile-First Web Dashboard (Route Hijacking)
 
 `esphome-noise` includes an optional, mobile-first rewrite of the device's web server dashboard. When enabled, visiting `http://<device-ip>/` presents a dark-mode, tactile dashboard focused completely on the noise generator:
 
-- **Animated Audio Visualizer**: Responsive HTML5 canvas fluid wave animation reacting to the active volume and sound color.
-- **12 Interactive Sound Cards**: Tap to switch between White, Pink, Brown, Gray, Waves, Wind, Stream, Fan, Rain, Campfire, Heartbeat, and Beep with dynamic accent color shifting.
-- **Tactile Sliders**: Master volume slider with mute toggle and step buttons, tone/low-pass acoustic shaping slider, and sleep timer with live countdown timer badges (`⏳ 28m remaining`).
-- **One-Tap Mood Presets**: Deep Sleep, Rainy Night, Deep Focus, and Ocean Calm.
-- **Embedded & 100% Offline**: Minified and compressed (<10 KB gzip) directly in ESP32 flash (`NOISE_INDEX_HTML_GZ` PROGMEM array). Zero external CDNs or internet access required.
+- **12 Interactive Sound Cards**: Quick selection across all 12 sound profiles with active state indicators and volume metering.
+- **Precision Sliders**: Master volume slider with mute toggle and step buttons, tone/low-pass acoustic shaping slider.
+- **Sleep Timer & Live Countdown**: Sleep timer presets, expandable custom duration drawer, and synchronized live countdown display.
+- **One-Tap Quick Presets**: Deep Sleep, Rainy Night, Deep Focus, and Ocean Calm.
+- **Embedded & 100% Offline**: Minified and compressed (<8.5 KB gzip) directly in ESP32 flash (`NOISE_INDEX_HTML_GZ` PROGMEM array). Zero external CDNs or internet access required.
 - **Direct REST API**: Provides `/api/noise` (GET status, POST control) for instant JSON control.
 
 ### Route Hijacking & `webserver-listcomponents` Compatibility
