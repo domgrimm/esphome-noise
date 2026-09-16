@@ -1,0 +1,77 @@
+# Bedside sound machine with mobile-first interactive dashboard and webserver-listcomponents integration
+esphome:
+  name: bedside-sound-machine
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+
+logger:
+
+network:
+
+wifi:
+  ssid: "MyWiFiNetwork"
+  password: "SecretPassword"
+
+external_components:
+  # Noise generator component
+  - source: github://domgrimm/esphome-noise
+    components: [noise]
+
+  # Optional but recommended: listcomponents component to surface all device entities in the web dashboard
+  - source: github://domgrimm/esphome-webserver-listcomponents
+    components: [webserver_listcomponents]
+
+# Built-in web server (serves REST endpoints, /events SSE stream)
+web_server:
+  port: 80
+
+# Enables the /components discovery JSON endpoint used by the mobile dashboard and device manager apps
+webserver_listcomponents:
+
+i2s_audio:
+  - i2s_lrclk_pin: GPIO25
+    i2s_bclk_pin: GPIO26
+
+speaker:
+  - platform: i2s_audio
+    id: i2s_audio_speaker
+    i2s_dout_pin: GPIO22
+    dac_type: external
+
+noise:
+  id: bedside_noise
+  speaker: i2s_audio_speaker
+
+  # Enable the mobile-first dashboard rewrite:
+  web_server:
+    title: "Bedside Noise Machine"
+    show_components: true  # Surfaces all device entities below via webserver-listcomponents
+
+  # Auto-created entities for Home Assistant:
+  select:
+    name: "Noise Sound"
+  media_player:
+    name: "Noise Machine"
+  volume:
+    name: "Noise Volume"
+  tone:
+    name: "Noise Tone"
+  sleep_timer:
+    name: "Noise Sleep Timer"
+
+# Additional device components — all automatically surfaced in the mobile dashboard:
+switch:
+  - platform: template
+    name: "Night Light"
+    id: night_light
+    turn_on_action:
+      - logger.log: "Night light on"
+    turn_off_action:
+      - logger.log: "Night light off"
+
+button:
+  - platform: restart
+    name: "Restart Machine"

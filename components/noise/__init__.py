@@ -1,7 +1,8 @@
 import esphome.codegen as cg
 import esphome.config_validation as cv
-from esphome import automation
-from esphome.components import media_player, number, select, speaker
+from esphome import automation, core
+from esphome.components import media_player, number, select, speaker, web_server_base
+from esphome.components.web_server_base import CONF_WEB_SERVER_BASE_ID
 from esphome.const import (
     CONF_CHANNELS,
     CONF_DURATION,
@@ -13,6 +14,7 @@ from esphome.const import (
     CONF_TRIGGER_ID,
     CONF_VARIANT,
     CONF_VOLUME,
+    CONF_WEB_SERVER,
 )
 
 def AUTO_LOAD(config):
@@ -36,12 +38,15 @@ def AUTO_LOAD(config):
             or CONF_SLEEP_TIMER in conf
         ):
             loads.add("number")
+        if CONF_WEB_SERVER in conf and conf[CONF_WEB_SERVER]:
+            loads.add("web_server_base")
     return list(loads)
 
 MULTI_CONF = True
 
 noise_ns = cg.esphome_ns.namespace("noise")
 NoiseComponent = noise_ns.class_("NoiseComponent", cg.Component)
+NoiseWebServer = noise_ns.class_("NoiseWebServer", cg.Component)
 NoiseSelect = noise_ns.class_("NoiseSelect", select.Select)
 NoiseMediaPlayer = noise_ns.class_("NoiseMediaPlayer", media_player.MediaPlayer)
 NoiseVolumeNumber = noise_ns.class_("NoiseVolumeNumber", number.Number)
@@ -86,6 +91,27 @@ CONF_FADE_OUT_TIME = "fade_out_time"
 CONF_ON_PLAY = "on_play"
 CONF_ON_STOP = "on_stop"
 CONF_ON_VARIANT_CHANGED = "on_variant_changed"
+CONF_TITLE = "title"
+CONF_SHOW_COMPONENTS = "show_components"
+
+NOISE_WEB_SERVER_SCHEMA = cv.Schema(
+    {
+        cv.GenerateID(): cv.declare_id(NoiseWebServer),
+        cv.GenerateID(CONF_WEB_SERVER_BASE_ID): cv.use_id(web_server_base.WebServerBase),
+        cv.Optional(CONF_TITLE, default="Noise Machine"): cv.string,
+        cv.Optional(CONF_SHOW_COMPONENTS, default=True): cv.boolean,
+    }
+)
+
+
+def validate_noise_web_server(value):
+    if value is True:
+        return NOISE_WEB_SERVER_SCHEMA({})
+    if value is False or value is None:
+        return None
+    if isinstance(value, dict):
+        return NOISE_WEB_SERVER_SCHEMA(value)
+    raise cv.Invalid("Expected boolean or web_server dictionary")
 
 _CALLBACK_AUTOMATIONS = (
     automation.CallbackAutomation(
@@ -119,6 +145,7 @@ CONFIG_SCHEMA = cv.All(
             cv.Optional(CONF_INITIAL_VOLUME, default="100%"): cv.percentage,
             cv.Optional(CONF_FADE_IN_TIME, default="100ms"): cv.positive_time_period_milliseconds,
             cv.Optional(CONF_FADE_OUT_TIME, default="100ms"): cv.positive_time_period_milliseconds,
+            cv.Optional(CONF_WEB_SERVER): validate_noise_web_server,
             cv.Optional(CONF_SELECT): select.select_schema(
                 NoiseSelect,
                 entity_category=cv.UNDEFINED,
@@ -231,6 +258,17 @@ async def to_code(config):
         )
         cg.add(timer_var.set_parent(var))
         cg.add(var.set_sleep_timer_number(timer_var))
+
+    if CONF_WEB_SERVER in config and config[CONF_WEB_SERVER] is not None:
+        cg.add_define("USE_NOISE_WEB_SERVER")
+        ws_conf = config[CONF_WEB_SERVER]
+        base_var = await cg.get_variable(ws_conf[CONF_WEB_SERVER_BASE_ID])
+        ws_var = cg.new_Pvariable(ws_conf[CONF_ID], var, base_var)
+        cg.add(ws_var.set_title(ws_conf[CONF_TITLE]))
+        cg.add(ws_var.set_show_components(ws_conf[CONF_SHOW_COMPONENTS]))
+        await cg.register_component(ws_var, ws_conf)
+        if core.CORE.using_arduino:
+            cg.add_library("esphome/ESPAsyncWebServer-esphome", None)
 
     await automation.build_callback_automations(var, config, _CALLBACK_AUTOMATIONS)
 

@@ -166,6 +166,7 @@ class NoiseComponent : public Component {
   bool is_muted() const { return this->muted_; }
   float get_volume() const { return this->volume_; }
   float get_tone() const { return this->tone_; }
+  float get_sleep_timer() const { return this->sleep_timer_minutes_; }
   std::string get_last_variant() const { return this->last_variant_; }
 
   template<typename F> void add_on_play_callback(F &&callback) {

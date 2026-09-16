@@ -13,6 +13,8 @@ Hardware-agnostic: binds to any standard ESPHome `speaker` platform (I2S DAC, in
 - **True Spatial Stereo**: When running on stereo speakers (`channels: 2` or AirPlay), Left and Right channels use independent PRNG generators and decorrelated phase LFOs for a wide, immersive spatial soundstage.
 - **AirPlay 2 Compatibility**: Direct output to [`henriklied/esphome-airplay2`](https://github.com/henriklied/esphome-airplay2) receivers without I2S pin conflicts. Automatically yields and pauses during AirPlay music streams, then smoothly resumes when music stops.
 - **Multi-Source Audio Coordination**: Automatically duck or pause background noise whenever other media players, announcements, or voice assistant pipelines on the device become active.
+- **Mobile-First Interactive Web Dashboard**: Optional route-hijacking rewrite of ESPHome's web server at `/`. Delivers a sleek dark-mode, touch-optimized dashboard dedicated to the sound machine with an animated audio visualizer, 12 tactile sound profile cards, smooth volume & tone sliders, sleep timer with live countdown, and one-tap quick presets.
+- **Full `webserver-listcomponents` Compatibility**: Seamlessly compatible with [`esphome-webserver-listcomponents`](https://github.com/domgrimm/esphome-webserver-listcomponents). All device entities (sensors, switches, lights, numbers, etc.) remain fully surfaced in an interactive, collapsible components drawer with live SSE synchronization, while `/components` API requests remain unintercepted.
 - **Rich Home Assistant Entities**:
   - `select`: Sound selector (`Off`, `White`, `Pink`, ..., `Rain`, `Campfire`, `Heartbeat`).
   - `media_player`: Native Home Assistant media player card integration with Play, Pause, Stop, Volume slider, and Power controls.
@@ -145,6 +147,7 @@ When an external player starts playing, `esphome-noise` smoothly ramps down. Whe
 | `volume` | Optional, Schema | | Auto-creates a `number` entity (0%–100%) for internal volume gain. |
 | `tone` | Optional, Schema | | Auto-creates a `number` entity (0%–100%) for the acoustic low-pass filter. |
 | `sleep_timer` | Optional, Schema | | Auto-creates a `number` entity (0–180 min) for automatic off timers. |
+| `web_server` | Optional, boolean or Schema | | Optional mobile-first interactive dashboard rewrite at `/`. |
 | `on_play` | Optional, Automation | | Triggered when noise starts playing. |
 | `on_stop` | Optional, Automation | | Triggered when noise stops. |
 | `on_variant_changed` | Optional, Automation | | Triggered when sound profile changes (passes `std::string variant`). |
@@ -208,11 +211,63 @@ Adjusts the acoustic low-pass filter (0% = warm & deep rumble, 100% = crisp full
 
 ---
 
+## Mobile-First Web Dashboard (Route Hijacking)
+
+`esphome-noise` includes an optional, mobile-first rewrite of the device's web server dashboard. When enabled, visiting `http://<device-ip>/` presents a dark-mode, tactile dashboard focused completely on the noise generator:
+
+- **Animated Audio Visualizer**: Responsive HTML5 canvas fluid wave animation reacting to the active volume and sound color.
+- **12 Interactive Sound Cards**: Tap to switch between White, Pink, Brown, Gray, Waves, Wind, Stream, Fan, Rain, Campfire, Heartbeat, and Beep with dynamic accent color shifting.
+- **Tactile Sliders**: Master volume slider with mute toggle and step buttons, tone/low-pass acoustic shaping slider, and sleep timer with live countdown timer badges (`⏳ 28m remaining`).
+- **One-Tap Mood Presets**: Deep Sleep, Rainy Night, Deep Focus, and Ocean Calm.
+- **Embedded & 100% Offline**: Minified and compressed (<10 KB gzip) directly in ESP32 flash (`NOISE_INDEX_HTML_GZ` PROGMEM array). Zero external CDNs or internet access required.
+- **Direct REST API**: Provides `/api/noise` (GET status, POST control) for instant JSON control.
+
+### Route Hijacking & `webserver-listcomponents` Compatibility
+
+The custom web server uses route hijacking via `web_server_base::add_handler` registered with high setup priority (`setup_priority::WIFI`). It exclusively intercepts `GET /` and `GET /index.html`, leaving all other paths completely untouched:
+
+- `/components` continues directly to [`esphome-webserver-listcomponents`](https://github.com/domgrimm/esphome-webserver-listcomponents).
+- `/events` continues directly to ESPHome's Server-Sent Events stream.
+- `/switch/*`, `/select/*`, `/number/*`, `/light/*`, and `/button/*` continue to standard ESPHome REST endpoints.
+
+**All components remain surfaced**: The mobile dashboard queries `/components` (provided by `webserver_listcomponents`) to populate an expandable **"Device Components"** drawer. You can toggle switches, adjust numbers, trigger buttons, and read sensors directly from the dashboard, with real-time state synchronization via `/events`.
+
+### YAML Configuration
+
+```yaml
+external_components:
+  - source: github://domgrimm/esphome-noise
+    components: [noise]
+  - source: github://domgrimm/esphome-webserver-listcomponents
+    components: [webserver_listcomponents]
+
+web_server:
+  port: 80
+
+webserver_listcomponents:
+
+noise:
+  speaker: hardware_speaker
+  web_server:
+    title: "Bedside Noise Machine" # Optional: custom page title
+    show_components: true          # Optional: surfaces all device entities (default: true)
+```
+
+Or simply:
+```yaml
+noise:
+  speaker: hardware_speaker
+  web_server: true
+```
+
+---
+
 ## Examples
 
 Check the [`examples/`](examples/) directory for complete, verified configurations:
 
 - [**`example.yaml`**](example.yaml): General ESP32 + I2S speaker setup with all entities and a physical button.
+- [**`examples/web_dashboard_sound_machine.yaml`**](examples/web_dashboard_sound_machine.yaml): **Mobile-First Web Dashboard with `webserver-listcomponents`**: Dedicated interactive sound machine web UI at `/` with all device components surfaced.
 - [**`examples/airplay_with_noise.yaml`**](examples/airplay_with_noise.yaml): **AirPlay 2 Receiver with Integrated Noise Generator** on the same ESP32 board without I2S pin conflicts and with automatic pause/resume coordination.
 - [**`examples/multi_source_audio_mixer.yaml`**](examples/multi_source_audio_mixer.yaml): **Multi-Source Audio** configuration with multi-instance noise, background ambient sound, and automatic ducking during alerts.
 - [**`examples/bedside_sound_machine.yaml`**](examples/bedside_sound_machine.yaml): Sleep-aid machine with rotary encoder volume knob, sound button, and synchronized auto-dimming nightlight.

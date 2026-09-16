@@ -1,0 +1,1174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Noise Machine</title>
+  <style>
+    :root {
+      --bg-main: #0a0d14;
+      --bg-card: rgba(22, 28, 42, 0.75);
+      --bg-card-hover: rgba(30, 39, 58, 0.85);
+      --bg-elevated: #161e30;
+      --border: rgba(255, 255, 255, 0.08);
+      --border-active: rgba(245, 158, 11, 0.4);
+      --text-main: #f1f5f9;
+      --text-muted: #94a3b8;
+      --text-dim: #64748b;
+      --accent: #f59e0b;
+      --accent-glow: rgba(245, 158, 11, 0.25);
+      --accent-dark: #b45309;
+      --success: #10b981;
+      --danger: #ef4444;
+      --radius-lg: 20px;
+      --radius-md: 14px;
+      --radius-sm: 8px;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: calc(16px + var(--safe-top)) 16px calc(32px + var(--safe-bottom));
+      overflow-x: hidden;
+    }
+    .container {
+      width: 100%;
+      max-width: 480px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* Top Bar */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 4px 4px 8px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .brand-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px var(--accent-glow);
+    }
+    .brand-icon svg { width: 18px; height: 18px; fill: #fff; }
+    h1 { font-size: 1.25rem; font-weight: 700; letter-spacing: -0.02em; }
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      padding: 4px 10px;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-dim);
+      transition: background 0.3s;
+    }
+    .status-dot.active {
+      background: var(--success);
+      box-shadow: 0 0 8px var(--success);
+    }
+    .status-dot.paused {
+      background: var(--accent);
+      box-shadow: 0 0 8px var(--accent);
+    }
+
+    /* Glass Card */
+    .card {
+      background: var(--bg-card);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 18px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.36);
+    }
+
+    /* Hero Player */
+    .hero-card {
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      padding: 24px 20px;
+      border: 1px solid var(--border-active);
+      box-shadow: 0 12px 40px var(--accent-glow);
+      transition: border-color 0.4s, box-shadow 0.4s;
+    }
+    #visualizer {
+      width: 100%;
+      height: 80px;
+      margin-bottom: 12px;
+      border-radius: var(--radius-md);
+      background: rgba(0, 0, 0, 0.25);
+    }
+    .current-sound-title {
+      font-size: 1.5rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .current-sound-desc {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+      min-height: 1.2em;
+    }
+    .hero-controls {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      width: 100%;
+    }
+    .btn-play {
+      width: 76px;
+      height: 76px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+      border: none;
+      outline: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 8px 24px var(--accent-glow);
+      transition: transform 0.15s, box-shadow 0.2s;
+    }
+    .btn-play:active { transform: scale(0.93); }
+    .btn-play svg { width: 34px; height: 34px; fill: #fff; }
+    .btn-circle-secondary {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+    }
+    .btn-circle-secondary:active { transform: scale(0.92); background: var(--bg-card-hover); }
+    .btn-circle-secondary svg { width: 20px; height: 20px; fill: currentColor; }
+
+    /* Section Headings */
+    .section-title {
+      font-size: 0.82rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-dim);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* Sound Variants Grid */
+    .variants-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .variant-card {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 12px 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+    }
+    .variant-card:active { transform: scale(0.96); }
+    .variant-card.active {
+      border-color: var(--accent);
+      background: rgba(245, 158, 11, 0.12);
+      box-shadow: 0 0 16px var(--accent-glow);
+    }
+    .variant-icon {
+      font-size: 1.5rem;
+      line-height: 1;
+    }
+    .variant-name {
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+    .variant-sub {
+      font-size: 0.65rem;
+      color: var(--text-dim);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+    }
+
+    /* Sliders & Controls */
+    .control-row {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .control-row:last-child { margin-bottom: 0; }
+    .control-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+    .control-header .val {
+      color: var(--accent);
+      font-weight: 700;
+    }
+    .slider-wrap {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .slider-icon-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .slider-icon-btn svg { width: 20px; height: 20px; fill: currentColor; }
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 8px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.12);
+      outline: none;
+      position: relative;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+      cursor: pointer;
+      border: 2px solid var(--accent);
+      transition: transform 0.1s;
+    }
+    input[type="range"]::-webkit-slider-thumb:active {
+      transform: scale(1.2);
+    }
+
+    /* Chips Row */
+    .chips-row {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+      scrollbar-width: none;
+    }
+    .chips-row::-webkit-scrollbar { display: none; }
+    .chip {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      border-radius: 9999px;
+      padding: 6px 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .chip:active { transform: scale(0.95); }
+    .chip.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+      box-shadow: 0 2px 8px var(--accent-glow);
+    }
+
+    /* Presets Grid */
+    .presets-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+    .preset-card {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 10px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .preset-card:active { transform: scale(0.97); }
+    .preset-card:hover { border-color: var(--border-active); }
+    .preset-icon { font-size: 1.25rem; }
+    .preset-info { text-align: left; overflow: hidden; }
+    .preset-name { font-size: 0.8rem; font-weight: 700; }
+    .preset-sub { font-size: 0.65rem; color: var(--text-dim); }
+
+    /* All Components Drawer (webserver-listcomponents) */
+    .components-card {
+      padding: 0;
+      overflow: hidden;
+    }
+    .components-header {
+      padding: 16px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      user-select: none;
+    }
+    .components-header-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .components-badge {
+      font-size: 0.7rem;
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--success);
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-weight: 600;
+    }
+    .components-chevron {
+      width: 20px;
+      height: 20px;
+      fill: var(--text-muted);
+      transition: transform 0.3s;
+    }
+    .components-card.open .components-chevron {
+      transform: rotate(180deg);
+    }
+    .components-body {
+      display: none;
+      padding: 0 16px 16px;
+      border-top: 1px solid var(--border);
+    }
+    .components-card.open .components-body {
+      display: block;
+    }
+    .components-search {
+      width: 100%;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 8px 12px;
+      color: var(--text-main);
+      font-size: 0.82rem;
+      margin: 12px 0 10px;
+      outline: none;
+    }
+    .components-search:focus {
+      border-color: var(--accent);
+    }
+    .components-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 360px;
+      overflow-y: auto;
+      padding-right: 2px;
+    }
+    .entity-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      font-size: 0.82rem;
+    }
+    .entity-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      overflow: hidden;
+      padding-right: 8px;
+    }
+    .entity-name { font-weight: 600; }
+    .entity-id { font-size: 0.68rem; color: var(--text-dim); }
+    .entity-control { display: flex; align-items: center; gap: 8px; }
+
+    /* Switch toggle */
+    .switch-toggle {
+      position: relative;
+      width: 44px;
+      height: 24px;
+      background: var(--border);
+      border-radius: 999px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .switch-toggle.on { background: var(--success); }
+    .switch-toggle::after {
+      content: '';
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #fff;
+      top: 3px;
+      left: 3px;
+      transition: transform 0.2s;
+    }
+    .switch-toggle.on::after { transform: translateX(20px); }
+
+    .btn-press {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 4px 10px;
+      border-radius: var(--radius-sm);
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-press:active { transform: scale(0.95); }
+
+    /* Timer Countdown badge */
+    .countdown-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--accent);
+      padding: 2px 8px;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header>
+      <div class="brand">
+        <div class="brand-icon">
+          <svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+        </div>
+        <h1 id="app-title">Noise Machine</h1>
+      </div>
+      <div class="status-pill">
+        <span class="status-dot" id="status-dot"></span>
+        <span id="status-text">Connecting...</span>
+      </div>
+    </header>
+
+    <!-- Hero Player Card -->
+    <div class="card hero-card" id="hero-card">
+      <canvas id="visualizer"></canvas>
+      <div class="current-sound-title">
+        <span id="hero-icon">🤎</span>
+        <span id="hero-title">Brown Noise</span>
+      </div>
+      <div class="current-sound-desc" id="hero-desc">Deep low-frequency roar for restorative sleep</div>
+      <div class="hero-controls">
+        <button class="btn-circle-secondary" id="btn-power" title="Power Off">
+          <svg viewBox="0 0 24 24"><path d="M13 3h-2v10h2V3zm4.83 2.17l-1.42 1.42C17.99 7.86 19 9.81 19 12c0 3.87-3.13 7-7 7s-7-3.13-7-7c0-2.19 1.01-4.14 2.58-5.42L6.17 5.17C4.23 6.82 3 9.26 3 12c0 4.97 4.03 9 9 9s9-4.03 9-9c0-2.74-1.23-5.18-3.17-6.83z"/></svg>
+        </button>
+        <button class="btn-play" id="btn-play-pause" title="Play/Pause">
+          <svg viewBox="0 0 24 24" id="play-icon"><path d="M8 5v14l11-7z"/></svg>
+        </button>
+        <button class="btn-circle-secondary" id="btn-mute" title="Mute/Unmute">
+          <svg viewBox="0 0 24 24" id="mute-icon"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Sound Profiles -->
+    <div class="card">
+      <div class="section-title">Sound Profiles</div>
+      <div class="variants-grid" id="variants-grid">
+        <!-- Variant cards dynamically or statically injected -->
+      </div>
+    </div>
+
+    <!-- Audio Adjustments (Volume, Tone, Sleep Timer) -->
+    <div class="card">
+      <div class="section-title">Sound Shaping</div>
+      
+      <!-- Volume Slider -->
+      <div class="control-row">
+        <div class="control-header">
+          <span>Master Volume</span>
+          <span class="val" id="volume-val">80%</span>
+        </div>
+        <div class="slider-wrap">
+          <button class="slider-icon-btn" id="vol-down">
+            <svg viewBox="0 0 24 24"><path d="M7 11v2h10v-2H7z"/></svg>
+          </button>
+          <input type="range" id="volume-slider" min="0" max="100" value="80">
+          <button class="slider-icon-btn" id="vol-up">
+            <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Tone Slider (Low-Pass Filter) -->
+      <div class="control-row" id="tone-row">
+        <div class="control-header">
+          <span>Tone (Filter)</span>
+          <span class="val" id="tone-val">100%</span>
+        </div>
+        <div class="slider-wrap">
+          <span style="font-size:0.7rem; color:var(--text-dim);">Warm</span>
+          <input type="range" id="tone-slider" min="0" max="100" value="100">
+          <span style="font-size:0.7rem; color:var(--text-dim);">Crisp</span>
+        </div>
+      </div>
+
+      <!-- Sleep Timer -->
+      <div class="control-row" id="timer-row">
+        <div class="control-header">
+          <span>Sleep Timer</span>
+          <span class="countdown-badge" id="timer-countdown" style="display:none;">⏳ <span id="timer-countdown-val">30m</span></span>
+          <span class="val" id="timer-val">Off</span>
+        </div>
+        <div class="chips-row" id="timer-chips">
+          <button class="chip active" data-mins="0">Off</button>
+          <button class="chip" data-mins="15">15m</button>
+          <button class="chip" data-mins="30">30m</button>
+          <button class="chip" data-mins="45">45m</button>
+          <button class="chip" data-mins="60">60m</button>
+          <button class="chip" data-mins="90">90m</button>
+          <button class="chip" data-mins="120">120m</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Presets -->
+    <div class="card">
+      <div class="section-title">Quick Presets</div>
+      <div class="presets-grid">
+        <div class="preset-card" data-preset="sleep">
+          <div class="preset-icon">🌙</div>
+          <div class="preset-info">
+            <div class="preset-name">Deep Sleep</div>
+            <div class="preset-sub">Brown • 75% • 45m</div>
+          </div>
+        </div>
+        <div class="preset-card" data-preset="rain">
+          <div class="preset-icon">🌧️</div>
+          <div class="preset-info">
+            <div class="preset-name">Rainy Night</div>
+            <div class="preset-sub">Rain • 70% • 60m</div>
+          </div>
+        </div>
+        <div class="preset-card" data-preset="focus">
+          <div class="preset-icon">🧠</div>
+          <div class="preset-info">
+            <div class="preset-name">Deep Focus</div>
+            <div class="preset-sub">Pink • 60% • 90m</div>
+          </div>
+        </div>
+        <div class="preset-card" data-preset="calm">
+          <div class="preset-icon">🌊</div>
+          <div class="preset-info">
+            <div class="preset-name">Ocean Calm</div>
+            <div class="preset-sub">Waves • 65% • 30m</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- All Components Drawer (webserver-listcomponents compatibility) -->
+    <div class="card components-card" id="components-card">
+      <div class="components-header" id="components-toggle">
+        <div class="components-header-left">
+          <span style="font-size:1.1rem;">⚡</span>
+          <div>
+            <div style="font-weight:700; font-size:0.9rem;">Device Components</div>
+            <div style="font-size:0.7rem; color:var(--text-muted);" id="components-subtitle">Surfaced from webserver-listcomponents</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span class="components-badge" id="components-count">0 items</span>
+          <svg class="components-chevron" viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
+        </div>
+      </div>
+      <div class="components-body">
+        <input type="text" class="components-search" id="components-search" placeholder="Search entities...">
+        <div class="components-list" id="components-list">
+          <div style="text-align:center; padding:16px; color:var(--text-dim); font-size:0.8rem;">Loading components...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // State management
+    const SOUNDS = [
+      { id: 'Brown', name: 'Brown', icon: '🤎', desc: 'Deep low-frequency roar for restorative sleep', color: '#f59e0b', glow: 'rgba(245, 158, 11, 0.25)' },
+      { id: 'Pink', name: 'Pink', icon: '🌸', desc: 'Gentle balanced noise for focus & relaxation', color: '#f43f5e', glow: 'rgba(244, 63, 94, 0.25)' },
+      { id: 'White', name: 'White', icon: '🤍', desc: 'Crisp full-spectrum mask for blocking distractions', color: '#38bdf8', glow: 'rgba(56, 189, 248, 0.25)' },
+      { id: 'Waves', name: 'Waves', icon: '🌊', desc: 'Continuous rolling ocean surf & swells', color: '#06b6d4', glow: 'rgba(6, 182, 212, 0.25)' },
+      { id: 'Rain', name: 'Rain', icon: '🌧️', desc: 'Calming steady raindrops on a quiet roof', color: '#3b82f6', glow: 'rgba(59, 130, 246, 0.25)' },
+      { id: 'Campfire', name: 'Campfire', icon: '🪵', desc: 'Crackling wood embers & hearthside warmth', color: '#f97316', glow: 'rgba(249, 115, 22, 0.25)' },
+      { id: 'Stream', name: 'Stream', icon: '🏞️', desc: 'Babbling mountain brook rushing over stones', color: '#14b8a6', glow: 'rgba(20, 184, 166, 0.25)' },
+      { id: 'Wind', name: 'Wind', icon: '💨', desc: 'Soothing mountain breeze blowing through pines', color: '#0ea5e9', glow: 'rgba(14, 165, 233, 0.25)' },
+      { id: 'Fan', name: 'Fan', icon: '🌀', desc: 'Steady rotary blade air oscillation hum', color: '#0d9488', glow: 'rgba(13, 148, 136, 0.25)' },
+      { id: 'Gray', name: 'Gray', icon: '🩶', desc: 'Psychoacoustically equalized comfortable noise', color: '#a855f7', glow: 'rgba(168, 85, 247, 0.25)' },
+      { id: 'Heartbeat', name: 'Heartbeat', icon: '💓', desc: 'Rhythmic soothing maternal pulse', color: '#ef4444', glow: 'rgba(239, 68, 68, 0.25)' },
+      { id: 'Beep', name: 'Beep', icon: '🔔', desc: 'Periodic alert tone and calibration cue', color: '#10b981', glow: 'rgba(16, 185, 129, 0.25)' },
+    ];
+
+    let state = {
+      running: false,
+      paused: false,
+      variant: 'Brown',
+      volume: 0.8,
+      tone: 1.0,
+      sleep_timer: 0,
+      muted: false,
+      ducked: false
+    };
+
+    let entities = [];
+    let isMock = (window.location.protocol === 'file:' || window.location.hostname === 'localhost');
+    let timerCountdownInterval = null;
+    let timerEndsAt = null;
+
+    // Canvas visualizer
+    const canvas = document.getElementById('visualizer');
+    const ctx = canvas.getContext('2d');
+    let animFrame;
+    let phase = 0;
+
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * (window.devicePixelRatio || 1);
+      canvas.height = rect.height * (window.devicePixelRatio || 1);
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    function drawVisualizer() {
+      const w = canvas.width;
+      const h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      const activeColor = getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#f59e0b';
+      const isPlaying = state.running && !state.paused;
+
+      const numWaves = 3;
+      const baseAmp = isPlaying ? (h * 0.28 * Math.max(0.15, state.volume)) : 2;
+      const speed = isPlaying ? 0.05 : 0.01;
+
+      for (let i = 0; i < numWaves; i++) {
+        ctx.beginPath();
+        ctx.lineWidth = i === 0 ? 3 : 1.5;
+        ctx.strokeStyle = activeColor;
+        ctx.globalAlpha = i === 0 ? 0.9 : 0.4 / (i + 1);
+
+        for (let x = 0; x < w; x += 4) {
+          const freq = 0.008 + i * 0.004;
+          const y = h / 2 + Math.sin(x * freq + phase + i * 1.5) * baseAmp * Math.sin((x / w) * Math.PI);
+          if (x === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+
+      phase += speed;
+      animFrame = requestAnimationFrame(drawVisualizer);
+    }
+    drawVisualizer();
+
+    // Render sound variant cards
+    const variantsGrid = document.getElementById('variants-grid');
+    variantsGrid.innerHTML = SOUNDS.map(s => `
+      <div class="variant-card ${s.id === state.variant ? 'active' : ''}" data-variant="${s.id}">
+        <div class="variant-icon">${s.icon}</div>
+        <div class="variant-name">${s.name}</div>
+        <div class="variant-sub">${s.desc.split(' ')[0]}</div>
+      </div>
+    `).join('');
+
+    variantsGrid.addEventListener('click', (e) => {
+      const card = e.target.closest('.variant-card');
+      if (!card) return;
+      const variant = card.dataset.variant;
+      selectVariant(variant);
+    });
+
+    function updateTheme(variantName) {
+      const s = SOUNDS.find(x => x.name.toLowerCase() === variantName.toLowerCase()) || SOUNDS[0];
+      document.documentElement.style.setProperty('--accent', s.color);
+      document.documentElement.style.setProperty('--accent-glow', s.glow);
+      document.getElementById('hero-icon').textContent = s.icon;
+      document.getElementById('hero-title').textContent = s.name + ' Noise';
+      document.getElementById('hero-desc').textContent = s.desc;
+
+      document.querySelectorAll('.variant-card').forEach(card => {
+        card.classList.toggle('active', card.dataset.variant.toLowerCase() === variantName.toLowerCase());
+      });
+    }
+
+    function updateUI() {
+      updateTheme(state.variant);
+
+      const statusDot = document.getElementById('status-dot');
+      const statusText = document.getElementById('status-text');
+      const playIcon = document.getElementById('play-icon');
+
+      if (state.running && !state.paused) {
+        statusDot.className = 'status-dot active';
+        statusText.textContent = `Playing: ${state.variant}`;
+        playIcon.innerHTML = '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>'; // Pause icon
+      } else if (state.running && state.paused) {
+        statusDot.className = 'status-dot paused';
+        statusText.textContent = 'Paused';
+        playIcon.innerHTML = '<path d="M8 5v14l11-7z"/>'; // Play icon
+      } else {
+        statusDot.className = 'status-dot';
+        statusText.textContent = 'Off';
+        playIcon.innerHTML = '<path d="M8 5v14l11-7z"/>'; // Play icon
+      }
+
+      // Volume
+      const volSlider = document.getElementById('volume-slider');
+      const volVal = document.getElementById('volume-val');
+      const volPct = Math.round(state.volume * 100);
+      volSlider.value = volPct;
+      volVal.textContent = volPct + '%';
+
+      // Tone
+      const toneSlider = document.getElementById('tone-slider');
+      const toneVal = document.getElementById('tone-val');
+      const tonePct = Math.round(state.tone * 100);
+      toneSlider.value = tonePct;
+      toneVal.textContent = tonePct + '%';
+
+      // Sleep Timer Chips
+      const timerVal = document.getElementById('timer-val');
+      timerVal.textContent = state.sleep_timer > 0 ? `${Math.round(state.sleep_timer)} min` : 'Off';
+      document.querySelectorAll('#timer-chips .chip').forEach(c => {
+        const mins = parseFloat(c.dataset.mins);
+        c.classList.toggle('active', Math.abs(mins - state.sleep_timer) < 1);
+      });
+
+      // Timer countdown badge
+      const cdBadge = document.getElementById('timer-countdown');
+      if (state.running && state.sleep_timer > 0) {
+        cdBadge.style.display = 'inline-flex';
+        document.getElementById('timer-countdown-val').textContent = `${Math.round(state.sleep_timer)}m`;
+      } else {
+        cdBadge.style.display = 'none';
+      }
+
+      // Mute icon
+      const muteIcon = document.getElementById('mute-icon');
+      if (state.muted) {
+        muteIcon.innerHTML = '<path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>';
+      } else {
+        muteIcon.innerHTML = '<path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>';
+      }
+    }
+
+    // Direct Noise Control API
+    async function sendCommand(action, params = {}) {
+      if (isMock) {
+        if (action === 'play') {
+          state.running = true;
+          state.paused = false;
+          if (params.variant) state.variant = params.variant;
+          if (params.volume !== undefined) state.volume = params.volume;
+        } else if (action === 'stop') {
+          state.running = false;
+          state.paused = false;
+        } else if (action === 'pause') {
+          state.paused = true;
+        } else if (action === 'resume') {
+          state.running = true;
+          state.paused = false;
+        } else if (action === 'volume') {
+          state.volume = params.value;
+        } else if (action === 'tone') {
+          state.tone = params.value;
+        } else if (action === 'sleep_timer') {
+          state.sleep_timer = params.minutes;
+        } else if (action === 'mute') {
+          state.muted = !state.muted;
+        }
+        updateUI();
+        return;
+      }
+
+      const body = new URLSearchParams({ action, ...params });
+      try {
+        const res = await fetch('/api/noise', { method: 'POST', body });
+        if (res.ok) {
+          const json = await res.json();
+          Object.assign(state, json);
+          updateUI();
+        }
+      } catch (err) {
+        console.warn('API call failed, falling back to ESPHome REST endpoints', err);
+        fallbackRest(action, params);
+      }
+    }
+
+    // Fallback standard ESPHome REST endpoints
+    function fallbackRest(action, params) {
+      if (action === 'play' || action === 'resume') {
+        const soundSelect = entities.find(e => e.type === 'select' && e.name.toLowerCase().includes('noise'));
+        if (soundSelect) {
+          fetch(`/select/${soundSelect.object_id}/set?option=${encodeURIComponent(params.variant || state.variant)}`, { method: 'POST' });
+        }
+      } else if (action === 'stop') {
+        const soundSelect = entities.find(e => e.type === 'select' && e.name.toLowerCase().includes('noise'));
+        if (soundSelect) {
+          fetch(`/select/${soundSelect.object_id}/set?option=Off`, { method: 'POST' });
+        }
+      } else if (action === 'volume') {
+        const volNum = entities.find(e => e.type === 'number' && e.name.toLowerCase().includes('volume'));
+        if (volNum) {
+          fetch(`/number/${volNum.object_id}/set?value=${Math.round(params.value * 100)}`, { method: 'POST' });
+        }
+      } else if (action === 'tone') {
+        const toneNum = entities.find(e => e.type === 'number' && e.name.toLowerCase().includes('tone'));
+        if (toneNum) {
+          fetch(`/number/${toneNum.object_id}/set?value=${Math.round(params.value * 100)}`, { method: 'POST' });
+        }
+      } else if (action === 'sleep_timer') {
+        const timerNum = entities.find(e => e.type === 'number' && e.name.toLowerCase().includes('timer'));
+        if (timerNum) {
+          fetch(`/number/${timerNum.object_id}/set?value=${params.minutes}`, { method: 'POST' });
+        }
+      }
+    }
+
+    function selectVariant(variant) {
+      state.variant = variant;
+      sendCommand('play', { variant, volume: state.volume });
+    }
+
+    // Hero button listeners
+    document.getElementById('btn-play-pause').addEventListener('click', () => {
+      if (state.running && !state.paused) {
+        sendCommand('pause');
+      } else if (state.running && state.paused) {
+        sendCommand('resume');
+      } else {
+        sendCommand('play', { variant: state.variant, volume: state.volume });
+      }
+    });
+
+    document.getElementById('btn-power').addEventListener('click', () => {
+      sendCommand('stop');
+    });
+
+    document.getElementById('btn-mute').addEventListener('click', () => {
+      sendCommand('mute');
+    });
+
+    // Volume Slider
+    const volSlider = document.getElementById('volume-slider');
+    volSlider.addEventListener('input', (e) => {
+      const val = parseFloat(e.target.value) / 100;
+      state.volume = val;
+      document.getElementById('volume-val').textContent = e.target.value + '%';
+    });
+    volSlider.addEventListener('change', (e) => {
+      const val = parseFloat(e.target.value) / 100;
+      sendCommand('volume', { value: val });
+    });
+
+    document.getElementById('vol-down').addEventListener('click', () => {
+      const newVol = Math.max(0, state.volume - 0.1);
+      state.volume = newVol;
+      sendCommand('volume', { value: newVol });
+    });
+    document.getElementById('vol-up').addEventListener('click', () => {
+      const newVol = Math.min(1.0, state.volume + 0.1);
+      state.volume = newVol;
+      sendCommand('volume', { value: newVol });
+    });
+
+    // Tone Slider
+    const toneSlider = document.getElementById('tone-slider');
+    toneSlider.addEventListener('input', (e) => {
+      const val = parseFloat(e.target.value) / 100;
+      state.tone = val;
+      document.getElementById('tone-val').textContent = e.target.value + '%';
+    });
+    toneSlider.addEventListener('change', (e) => {
+      const val = parseFloat(e.target.value) / 100;
+      sendCommand('tone', { value: val });
+    });
+
+    // Sleep Timer Chips
+    document.getElementById('timer-chips').addEventListener('click', (e) => {
+      const chip = e.target.closest('.chip');
+      if (!chip) return;
+      const mins = parseFloat(chip.dataset.mins);
+      state.sleep_timer = mins;
+      sendCommand('sleep_timer', { minutes: mins });
+    });
+
+    // Preset cards
+    document.querySelectorAll('.preset-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const p = card.dataset.preset;
+        if (p === 'sleep') {
+          sendCommand('play', { variant: 'Brown', volume: 0.75 });
+          sendCommand('tone', { value: 0.4 });
+          sendCommand('sleep_timer', { minutes: 45 });
+        } else if (p === 'rain') {
+          sendCommand('play', { variant: 'Rain', volume: 0.70 });
+          sendCommand('tone', { value: 0.75 });
+          sendCommand('sleep_timer', { minutes: 60 });
+        } else if (p === 'focus') {
+          sendCommand('play', { variant: 'Pink', volume: 0.60 });
+          sendCommand('tone', { value: 0.85 });
+          sendCommand('sleep_timer', { minutes: 90 });
+        } else if (p === 'calm') {
+          sendCommand('play', { variant: 'Waves', volume: 0.65 });
+          sendCommand('tone', { value: 0.60 });
+          sendCommand('sleep_timer', { minutes: 30 });
+        }
+      });
+    });
+
+    // All Components Drawer (webserver-listcomponents)
+    const compCard = document.getElementById('components-card');
+    document.getElementById('components-toggle').addEventListener('click', () => {
+      compCard.classList.toggle('open');
+    });
+
+    async function loadComponents() {
+      if (isMock) {
+        entities = [
+          { key: 'sensor-temp', object_id: 'bedroom_temperature', name: 'Bedroom Temperature', type: 'sensor', state: '21.8 °C' },
+          { key: 'sensor-humidity', object_id: 'bedroom_humidity', name: 'Bedroom Humidity', type: 'sensor', state: '45 %' },
+          { key: 'switch-nightlight', object_id: 'nightlight', name: 'Nightlight', type: 'switch', state: 'OFF' },
+          { key: 'binary_sensor-wifi', object_id: 'wifi_status', name: 'WiFi Connected', type: 'binary_sensor', state: 'ON' },
+          { key: 'button-restart', object_id: 'restart_button', name: 'Restart Device', type: 'button' },
+        ];
+        renderComponents();
+        return;
+      }
+
+      try {
+        const res = await fetch('/components');
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.components) {
+            entities = data.components;
+            document.getElementById('components-subtitle').textContent = 'Live from webserver-listcomponents';
+            renderComponents();
+          }
+        }
+      } catch (err) {
+        console.log('webserver-listcomponents not found or failed, listening to /events', err);
+      }
+    }
+
+    function renderComponents(filter = '') {
+      const list = document.getElementById('components-list');
+      const filtered = entities.filter(e => {
+        // Exclude noise machine internal entities from the general list if desired, or keep all
+        if (!filter) return true;
+        const q = filter.toLowerCase();
+        return e.name.toLowerCase().includes(q) || e.object_id.toLowerCase().includes(q) || e.type.toLowerCase().includes(q);
+      });
+
+      document.getElementById('components-count').textContent = `${entities.length} items`;
+
+      if (filtered.length === 0) {
+        list.innerHTML = '<div style="text-align:center; padding:12px; color:var(--text-dim); font-size:0.8rem;">No components matching search</div>';
+        return;
+      }
+
+      list.innerHTML = filtered.map(e => {
+        let control = '';
+        if (e.type === 'switch' || e.type === 'light') {
+          const isOn = (e.state || '').toUpperCase() === 'ON';
+          control = `<div class="switch-toggle ${isOn ? 'on' : ''}" data-type="${e.type}" data-id="${e.object_id}"></div>`;
+        } else if (e.type === 'button') {
+          control = `<button class="btn-press" data-type="${e.type}" data-id="${e.object_id}">Press</button>`;
+        } else if (e.type === 'sensor' || e.type === 'binary_sensor' || e.type === 'text_sensor') {
+          control = `<span style="font-weight:700; color:var(--text-main); font-size:0.85rem;">${e.state || '--'}</span>`;
+        } else {
+          control = `<span style="color:var(--text-dim); font-size:0.75rem;">${e.state || e.type}</span>`;
+        }
+
+        return `
+          <div class="entity-item">
+            <div class="entity-info">
+              <div class="entity-name">${e.name}</div>
+              <div class="entity-id">${e.type} • ${e.object_id}</div>
+            </div>
+            <div class="entity-control">${control}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Search filter
+    document.getElementById('components-search').addEventListener('input', (e) => {
+      renderComponents(e.target.value);
+    });
+
+    // Control components
+    document.getElementById('components-list').addEventListener('click', (e) => {
+      const toggle = e.target.closest('.switch-toggle');
+      if (toggle) {
+        const type = toggle.dataset.type;
+        const id = toggle.dataset.id;
+        toggle.classList.toggle('on');
+        if (!isMock) {
+          fetch(`/${type}/${id}/toggle`, { method: 'POST' });
+        }
+        return;
+      }
+
+      const pressBtn = e.target.closest('.btn-press');
+      if (pressBtn) {
+        const type = pressBtn.dataset.type;
+        const id = pressBtn.dataset.id;
+        if (!isMock) {
+          fetch(`/${type}/${id}/press`, { method: 'POST' });
+        }
+      }
+    });
+
+    // Connect to ESPHome Server-Sent Events (/events)
+    function connectEvents() {
+      if (isMock) return;
+
+      const evtSource = new EventSource('/events');
+      evtSource.onopen = () => {
+        console.log('SSE connected');
+      };
+      evtSource.addEventListener('state', (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          // Handle noise specific updates
+          if (data.id && data.id.includes('noise')) {
+            if (data.id.includes('select')) {
+              if (data.state === 'Off') {
+                state.running = false;
+              } else {
+                state.running = true;
+                state.variant = data.state;
+              }
+            } else if (data.id.includes('volume') && data.value !== undefined) {
+              state.volume = data.value / 100;
+            } else if (data.id.includes('tone') && data.value !== undefined) {
+              state.tone = data.value / 100;
+            } else if (data.id.includes('timer') && data.value !== undefined) {
+              state.sleep_timer = data.value;
+            }
+            updateUI();
+          }
+
+          // Update general component list
+          const existing = entities.find(x => x.key === data.id || x.object_id === (data.id.split('-')[1] || data.id));
+          if (existing) {
+            existing.state = data.state || (data.value !== undefined ? data.value : '');
+            renderComponents(document.getElementById('components-search').value);
+          } else if (data.name && data.id) {
+            // Discovered entity via SSE
+            const type = data.id.split('-')[0] || 'unknown';
+            const objId = data.id.replace(/^[a-z_]+-/, '');
+            entities.push({
+              key: data.id,
+              object_id: objId,
+              name: data.name,
+              type: type,
+              state: data.state || (data.value !== undefined ? data.value : '')
+            });
+            renderComponents(document.getElementById('components-search').value);
+          }
+        } catch (err) {
+          console.warn('Error parsing SSE event', err);
+        }
+      });
+
+      evtSource.onerror = () => {
+        console.warn('SSE stream disconnected, polling fallback');
+        evtSource.close();
+        setTimeout(connectEvents, 5000);
+      };
+    }
+
+    // Initial load
+    async function init() {
+      if (!isMock) {
+        try {
+          const res = await fetch('/api/noise');
+          if (res.ok) {
+            const data = await res.json();
+            Object.assign(state, data);
+            if (data.title) {
+              document.getElementById('app-title').textContent = data.title;
+              document.title = data.title;
+            }
+            if (data.show_components === false) {
+              document.getElementById('components-card').style.display = 'none';
+            }
+          }
+        } catch (err) {
+          console.log('Direct noise state poll failed', err);
+        }
+      }
+      updateUI();
+      loadComponents();
+      connectEvents();
+    }
+
+    init();
+  </script>
+</body>
+</html>
