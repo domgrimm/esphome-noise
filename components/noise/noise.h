@@ -122,6 +122,8 @@ class NoiseComponent : public Component {
 
   void set_speaker(speaker::Speaker *speaker) { this->speaker_ = speaker; }
 #ifdef USE_MEDIA_PLAYER
+  void set_speaker_media_player(media_player::MediaPlayer *mp) { this->speaker_media_player_ = mp; }
+  media_player::MediaPlayer *get_speaker_media_player() const { return this->speaker_media_player_; }
   void set_airplay_receiver(media_player::MediaPlayer *ap) {
     this->airplay_receiver_ = ap;
     this->add_pause_source(ap);
@@ -169,6 +171,12 @@ class NoiseComponent : public Component {
   void set_sleep_timer(float minutes);
   void set_muted(bool muted);
 
+  bool has_speaker_volume() const;
+  float get_speaker_volume() const;
+  void set_speaker_volume(float volume);
+  bool is_speaker_muted() const;
+  void set_speaker_muted(bool muted);
+
   bool is_running() const { return this->running_; }
   bool is_paused() const { return this->paused_; }
   bool is_muted() const { return this->muted_; }
@@ -199,6 +207,7 @@ class NoiseComponent : public Component {
 
   speaker::Speaker *speaker_{nullptr};
 #ifdef USE_MEDIA_PLAYER
+  media_player::MediaPlayer *speaker_media_player_{nullptr};
   media_player::MediaPlayer *airplay_receiver_{nullptr};
   std::vector<media_player::MediaPlayer *> duck_sources_;
   std::vector<media_player::MediaPlayer *> pause_sources_;
@@ -351,6 +360,16 @@ template<typename... Ts> class NoiseSetSleepTimerAction : public Action<Ts...>, 
     auto m = this->sleep_timer_.optional_value(x...);
     if (m.has_value())
       this->parent_->set_sleep_timer(*m);
+  }
+};
+
+template<typename... Ts> class NoiseSetSpeakerVolumeAction : public Action<Ts...>, public Parented<NoiseComponent> {
+ public:
+  TEMPLATABLE_VALUE(float, volume)
+  void play(const Ts &...x) override {
+    auto vol = this->volume_.optional_value(x...);
+    if (vol.has_value())
+      this->parent_->set_speaker_volume(*vol);
   }
 };
 

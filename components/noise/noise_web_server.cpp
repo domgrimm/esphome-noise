@@ -110,6 +110,16 @@ void NoiseWebHandler::handle_api_request_(AsyncWebServerRequest *request) {
         this->defer_([parent]() { parent->pause(); });
       } else if (action == "resume") {
         this->defer_([parent]() { parent->resume(); });
+      } else if (action == "master_volume" || action == "speaker_volume") {
+        if (request->hasArg("value")) {
+          auto val = parse_number<float>(request->arg("value"));
+          if (val.has_value()) {
+            float v = (*val > 1.0f) ? (*val / 100.0f) : *val;
+            this->defer_([parent, v]() { parent->set_speaker_volume(v); });
+          }
+        }
+      } else if (action == "master_mute" || action == "speaker_mute") {
+        this->defer_([parent]() { parent->set_speaker_muted(!parent->is_speaker_muted()); });
       } else if (action == "volume") {
         if (request->hasArg("value")) {
           auto val = parse_number<float>(request->arg("value"));
@@ -144,7 +154,7 @@ void NoiseWebHandler::handle_api_request_(AsyncWebServerRequest *request) {
 
   // GET: Read-only serialization on heap
   std::string buf;
-  buf.reserve(256);
+  buf.reserve(384);
   char temp[32];
   buf += "{\"title\":\"";
   buf += this->title_;
@@ -159,6 +169,13 @@ void NoiseWebHandler::handle_api_request_(AsyncWebServerRequest *request) {
   buf += "\",\"volume\":";
   snprintf(temp, sizeof(temp), "%.2f", this->parent_->get_volume());
   buf += temp;
+  buf += ",\"master_volume\":";
+  snprintf(temp, sizeof(temp), "%.2f", this->parent_->get_speaker_volume());
+  buf += temp;
+  buf += ",\"has_master_volume\":";
+  buf += this->parent_->has_speaker_volume() ? "true" : "false";
+  buf += ",\"master_muted\":";
+  buf += this->parent_->is_speaker_muted() ? "true" : "false";
   buf += ",\"tone\":";
   snprintf(temp, sizeof(temp), "%.2f", this->parent_->get_tone());
   buf += temp;

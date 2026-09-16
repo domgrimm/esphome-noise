@@ -633,10 +633,23 @@
     <div class="card">
       <div class="section-label">Controls</div>
 
-      <!-- Volume -->
+      <!-- Master Volume -->
+      <div class="control-row" id="master-vol-row">
+        <div class="control-head">
+          <span>Master Volume</span>
+          <span class="control-val" id="master-vol-val">100%</span>
+        </div>
+        <div class="slider-container">
+          <button class="step-btn" id="master-vol-down" type="button" aria-label="Decrease master volume">−</button>
+          <input type="range" id="master-vol-slider" min="0" max="100" value="100">
+          <button class="step-btn" id="master-vol-up" type="button" aria-label="Increase master volume">+</button>
+        </div>
+      </div>
+
+      <!-- Noise Volume -->
       <div class="control-row">
         <div class="control-head">
-          <span>Volume</span>
+          <span>Noise Volume</span>
           <span class="control-val" id="volume-val">80%</span>
         </div>
         <div class="slider-container">
@@ -726,6 +739,9 @@
       paused: false,
       variant: 'Brown',
       volume: 0.8,
+      master_volume: 1.0,
+      has_master_volume: true,
+      master_muted: false,
       tone: 1.0,
       sleep_timer: 0,
       sleep_timer_remaining: 0,
@@ -735,6 +751,7 @@
     let entities = [];
     let isMock = (window.location.protocol === 'file:' || window.location.hostname === 'localhost');
     let isUserSliding = false;
+    let isUserSlidingMaster = false;
 
     // Build Sound Buttons
     const soundGrid = document.getElementById('sound-grid');
@@ -790,6 +807,18 @@
       document.getElementById('btn-mute').classList.toggle('active', state.muted);
 
       // Sliders (only if user is not actively dragging)
+      if (!isUserSlidingMaster) {
+        const mvPct = Math.round((state.master_volume !== undefined ? state.master_volume : 1.0) * 100);
+        const mSlider = document.getElementById('master-vol-slider');
+        const mVal = document.getElementById('master-vol-val');
+        if (mSlider) mSlider.value = mvPct;
+        if (mVal) mVal.textContent = mvPct + '%';
+      }
+      const mvRow = document.getElementById('master-vol-row');
+      if (mvRow) {
+        mvRow.style.display = state.has_master_volume !== false ? 'flex' : 'none';
+      }
+
       if (!isUserSliding) {
         const volPct = Math.round(state.volume * 100);
         document.getElementById('volume-slider').value = volPct;
@@ -873,6 +902,8 @@
         state.paused = false;
       } else if (action === 'volume') {
         state.volume = params.value;
+      } else if (action === 'master_volume') {
+        state.master_volume = params.value;
       } else if (action === 'tone') {
         state.tone = params.value;
       } else if (action === 'sleep_timer') {
@@ -908,6 +939,9 @@
       } else if (action === 'stop') {
         const sel = entities.find(e => e.type === 'select' && e.name.toLowerCase().includes('noise'));
         if (sel) fetch(`/select/${sel.object_id}/set?option=Off`, { method: 'POST' });
+      } else if (action === 'master_volume') {
+        const mp = entities.find(e => e.type === 'media_player' && !e.name.toLowerCase().includes('noise'));
+        if (mp) fetch(`/media_player/${mp.object_id}/set?volume=${Math.round(params.value * 100)}`, { method: 'POST' });
       } else if (action === 'volume') {
         const num = entities.find(e => e.type === 'number' && e.name.toLowerCase().includes('volume'));
         if (num) fetch(`/number/${num.object_id}/set?value=${Math.round(params.value * 100)}`, { method: 'POST' });
@@ -933,7 +967,37 @@
     document.getElementById('btn-power').addEventListener('click', () => sendCommand('stop'));
     document.getElementById('btn-mute').addEventListener('click', () => sendCommand('mute'));
 
-    // Volume Slider
+    // Master Volume Slider & Buttons
+    const masterVolSlider = document.getElementById('master-vol-slider');
+    if (masterVolSlider) {
+      masterVolSlider.addEventListener('pointerdown', () => { isUserSlidingMaster = true; });
+      masterVolSlider.addEventListener('pointerup', () => { isUserSlidingMaster = false; });
+      masterVolSlider.addEventListener('input', (e) => {
+        isUserSlidingMaster = true;
+        state.master_volume = parseFloat(e.target.value) / 100;
+        document.getElementById('master-vol-val').textContent = e.target.value + '%';
+      });
+      masterVolSlider.addEventListener('change', (e) => {
+        isUserSlidingMaster = false;
+        const v = parseFloat(e.target.value) / 100;
+        state.master_volume = v;
+        sendCommand('master_volume', { value: v });
+      });
+    }
+    document.getElementById('master-vol-down')?.addEventListener('click', () => {
+      const v = Math.max(0.0, Math.round(((state.master_volume !== undefined ? state.master_volume : 1.0) - 0.05) * 100) / 100);
+      state.master_volume = v;
+      updateUI();
+      sendCommand('master_volume', { value: v });
+    });
+    document.getElementById('master-vol-up')?.addEventListener('click', () => {
+      const v = Math.min(1.0, Math.round(((state.master_volume !== undefined ? state.master_volume : 1.0) + 0.05) * 100) / 100);
+      state.master_volume = v;
+      updateUI();
+      sendCommand('master_volume', { value: v });
+    });
+
+    // Noise Volume Slider
     const volSlider = document.getElementById('volume-slider');
     volSlider.addEventListener('pointerdown', () => { isUserSliding = true; });
     volSlider.addEventListener('pointerup', () => { isUserSliding = false; });
@@ -1135,6 +1199,15 @@
             state.sleep_timer_remaining = data.sleep_timer_remaining;
           }
           state.muted = data.muted;
+          if (data.master_volume !== undefined && !isUserSlidingMaster) {
+            state.master_volume = data.master_volume;
+          }
+          if (data.has_master_volume !== undefined) {
+            state.has_master_volume = data.has_master_volume;
+          }
+          if (data.master_muted !== undefined) {
+            state.master_muted = data.master_muted;
+          }
           if (!isUserSliding) {
             state.volume = data.volume;
             state.tone = data.tone;
@@ -1156,6 +1229,14 @@
         try {
           const data = JSON.parse(e.data);
           const rawId = (data.id || '').toLowerCase();
+
+          // Master speaker volume change from Home Assistant
+          if (rawId.includes('media_player') && !rawId.includes('noise')) {
+            if (data.volume !== undefined && !isUserSlidingMaster) {
+              state.master_volume = parseFloat(data.volume);
+              updateUI();
+            }
+          }
 
           // Noise selector state change from Home Assistant
           if (rawId.includes('select') && rawId.includes('noise')) {

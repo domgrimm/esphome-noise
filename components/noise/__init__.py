@@ -33,6 +33,8 @@ def AUTO_LOAD(config):
             or CONF_AIRPLAY_RECEIVER in conf
             or CONF_DUCK_ON_MEDIA_PLAYERS in conf
             or CONF_PAUSE_ON_MEDIA_PLAYERS in conf
+            or CONF_SPEAKER_MEDIA_PLAYER in conf
+            or CONF_MASTER_MEDIA_PLAYER in conf
         ):
             loads.add("media_player")
         if (
@@ -67,6 +69,7 @@ NoiseUnduckAction = noise_ns.class_("NoiseUnduckAction", automation.Action, cg.P
 NoiseSetVolumeAction = noise_ns.class_("NoiseSetVolumeAction", automation.Action, cg.Parented.template(NoiseComponent))
 NoiseSetToneAction = noise_ns.class_("NoiseSetToneAction", automation.Action, cg.Parented.template(NoiseComponent))
 NoiseSetSleepTimerAction = noise_ns.class_("NoiseSetSleepTimerAction", automation.Action, cg.Parented.template(NoiseComponent))
+NoiseSetSpeakerVolumeAction = noise_ns.class_("NoiseSetSpeakerVolumeAction", automation.Action, cg.Parented.template(NoiseComponent))
 
 VARIANTS = [
     "white",
@@ -83,6 +86,8 @@ VARIANTS = [
     "beep",
 ]
 
+CONF_SPEAKER_MEDIA_PLAYER = "speaker_media_player"
+CONF_MASTER_MEDIA_PLAYER = "master_media_player"
 CONF_AIRPLAY_RECEIVER = "airplay_receiver"
 CONF_DUCK_ON_MEDIA_PLAYERS = "duck_on_media_players"
 CONF_PAUSE_ON_MEDIA_PLAYERS = "pause_on_media_players"
@@ -143,6 +148,8 @@ CONFIG_SCHEMA = cv.All(
         {
             cv.GenerateID(): cv.declare_id(NoiseComponent),
             cv.Optional(CONF_SPEAKER): cv.use_id(speaker.Speaker),
+            cv.Optional(CONF_SPEAKER_MEDIA_PLAYER): cv.use_id(media_player.MediaPlayer),
+            cv.Optional(CONF_MASTER_MEDIA_PLAYER): cv.use_id(media_player.MediaPlayer),
             cv.Optional(CONF_AIRPLAY_RECEIVER): cv.use_id(media_player.MediaPlayer),
             cv.Optional(CONF_DUCK_ON_MEDIA_PLAYERS): cv.ensure_list(cv.use_id(media_player.MediaPlayer)),
             cv.Optional(CONF_PAUSE_ON_MEDIA_PLAYERS): cv.ensure_list(cv.use_id(media_player.MediaPlayer)),
@@ -212,6 +219,31 @@ async def to_code(config):
     if CONF_SPEAKER in config:
         speaker_var = await cg.get_variable(config[CONF_SPEAKER])
         cg.add(var.set_speaker(speaker_var))
+
+    speaker_mp_var = None
+    if CONF_SPEAKER_MEDIA_PLAYER in config:
+        speaker_mp_var = await cg.get_variable(config[CONF_SPEAKER_MEDIA_PLAYER])
+    elif CONF_MASTER_MEDIA_PLAYER in config:
+        speaker_mp_var = await cg.get_variable(config[CONF_MASTER_MEDIA_PLAYER])
+    elif CONF_SPEAKER in config and "media_player" in core.CORE.config:
+        speaker_id = str(config[CONF_SPEAKER])
+        for mp_entry in core.CORE.config["media_player"]:
+            if not isinstance(mp_entry, dict):
+                continue
+            spk = None
+            if "announcement_pipeline" in mp_entry and isinstance(mp_entry["announcement_pipeline"], dict):
+                spk = mp_entry["announcement_pipeline"].get("speaker")
+            elif "media_pipeline" in mp_entry and isinstance(mp_entry["media_pipeline"], dict):
+                spk = mp_entry["media_pipeline"].get("speaker")
+            elif "speaker" in mp_entry:
+                spk = mp_entry.get("speaker")
+            if spk is not None and str(spk) == speaker_id:
+                if CONF_ID in mp_entry:
+                    speaker_mp_var = await cg.get_variable(mp_entry[CONF_ID])
+                    break
+    if speaker_mp_var is not None:
+        cg.add_define("USE_MEDIA_PLAYER")
+        cg.add(var.set_speaker_media_player(speaker_mp_var))
 
     if CONF_AIRPLAY_RECEIVER in config:
         cg.add_define("USE_NOISE_AIRPLAY")
@@ -464,4 +496,23 @@ async def noise_set_sleep_timer_to_code(config, action_id, template_arg, args):
     await cg.register_parented(var, config[CONF_ID])
     template_ = await cg.templatable(config[CONF_SLEEP_TIMER], args, cg.float_)
     cg.add(var.set_sleep_timer(template_))
+    return var
+
+
+@automation.register_action(
+    "noise.set_speaker_volume",
+    NoiseSetSpeakerVolumeAction,
+    cv.Schema(
+        {
+            cv.GenerateID(): cv.use_id(NoiseComponent),
+            cv.Required(CONF_VOLUME): cv.templatable(cv.percentage),
+        }
+    ),
+    synchronous=True,
+)
+async def noise_set_speaker_volume_to_code(config, action_id, template_arg, args):
+    var = cg.new_Pvariable(action_id, template_arg)
+    await cg.register_parented(var, config[CONF_ID])
+    template_ = await cg.templatable(config[CONF_VOLUME], args, cg.float_)
+    cg.add(var.set_volume(template_))
     return var

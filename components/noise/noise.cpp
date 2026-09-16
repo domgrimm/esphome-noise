@@ -324,6 +324,87 @@ void NoiseComponent::set_tone(float tone) {
 #endif
 }
 
+bool NoiseComponent::has_speaker_volume() const {
+#ifdef USE_MEDIA_PLAYER
+  if (this->speaker_media_player_ != nullptr || this->airplay_receiver_ != nullptr) {
+    return true;
+  }
+#endif
+  return this->speaker_ != nullptr;
+}
+
+float NoiseComponent::get_speaker_volume() const {
+#ifdef USE_MEDIA_PLAYER
+  if (this->speaker_media_player_ != nullptr) {
+    if (!std::isnan(this->speaker_media_player_->volume)) {
+      return this->speaker_media_player_->volume;
+    }
+  }
+#endif
+  if (this->speaker_ != nullptr) {
+    return this->speaker_->get_volume();
+  }
+#ifdef USE_MEDIA_PLAYER
+  if (this->airplay_receiver_ != nullptr) {
+    if (!std::isnan(this->airplay_receiver_->volume)) {
+      return this->airplay_receiver_->volume;
+    }
+  }
+#endif
+  return 1.0f;
+}
+
+void NoiseComponent::set_speaker_volume(float volume) {
+  volume = clamp(volume, 0.0f, 1.0f);
+#ifdef USE_MEDIA_PLAYER
+  if (this->speaker_media_player_ != nullptr) {
+    auto call = this->speaker_media_player_->make_call();
+    call.set_volume(volume);
+    call.perform();
+    return;
+  }
+#endif
+  if (this->speaker_ != nullptr) {
+    this->speaker_->set_volume(volume);
+    return;
+  }
+#ifdef USE_MEDIA_PLAYER
+  if (this->airplay_receiver_ != nullptr) {
+    auto call = this->airplay_receiver_->make_call();
+    call.set_volume(volume);
+    call.perform();
+    return;
+  }
+#endif
+}
+
+bool NoiseComponent::is_speaker_muted() const {
+#ifdef USE_MEDIA_PLAYER
+  if (this->speaker_media_player_ != nullptr) {
+    return this->speaker_media_player_->is_muted();
+  }
+#endif
+  if (this->speaker_ != nullptr) {
+    return this->speaker_->get_mute_state();
+  }
+  return false;
+}
+
+void NoiseComponent::set_speaker_muted(bool muted) {
+#ifdef USE_MEDIA_PLAYER
+  if (this->speaker_media_player_ != nullptr) {
+    auto call = this->speaker_media_player_->make_call();
+    call.set_command(muted ? media_player::MEDIA_PLAYER_COMMAND_MUTE : media_player::MEDIA_PLAYER_COMMAND_UNMUTE);
+    call.perform();
+    return;
+  }
+#endif
+  if (this->speaker_ != nullptr) {
+    this->speaker_->set_mute_state(muted);
+    return;
+  }
+}
+
 float NoiseComponent::get_sleep_timer_remaining_sec() const {
   if (!this->running_ || this->max_samples_ == 0 || this->time_smp_ >= this->max_samples_)
     return 0.0f;
