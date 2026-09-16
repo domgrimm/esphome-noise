@@ -169,6 +169,7 @@ class NoiseComponent : public Component {
   float get_volume() const { return this->volume_; }
   float get_tone() const { return this->tone_; }
   float get_sleep_timer() const { return this->sleep_timer_minutes_; }
+  float get_sleep_timer_remaining_sec() const;
   std::string get_last_variant() const { return this->last_variant_; }
 
   template<typename F> void add_on_play_callback(F &&callback) {
@@ -329,6 +330,16 @@ template<typename... Ts> class NoiseSetToneAction : public Action<Ts...>, public
     auto t = this->tone_.optional_value(x...);
     if (t.has_value())
       this->parent_->set_tone(*t);
+  }
+};
+
+template<typename... Ts> class NoiseSetSleepTimerAction : public Action<Ts...>, public Parented<NoiseComponent> {
+ public:
+  TEMPLATABLE_VALUE(float, sleep_timer)
+  void play(const Ts &...x) override {
+    auto m = this->sleep_timer_.optional_value(x...);
+    if (m.has_value())
+      this->parent_->set_sleep_timer(*m);
   }
 };
 

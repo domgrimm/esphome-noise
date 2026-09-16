@@ -165,6 +165,9 @@ void NoiseWebHandler::handle_api_request_(AsyncWebServerRequest *request) {
   buf += ",\"sleep_timer\":";
   snprintf(temp, sizeof(temp), "%.1f", this->parent_->get_sleep_timer());
   buf += temp;
+  buf += ",\"sleep_timer_remaining\":";
+  snprintf(temp, sizeof(temp), "%.0f", this->parent_->get_sleep_timer_remaining_sec());
+  buf += temp;
   buf += ",\"muted\":";
   buf += this->parent_->is_muted() ? "true" : "false";
   buf += "}";

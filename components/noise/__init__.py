@@ -8,9 +8,12 @@ from esphome.const import (
     CONF_DURATION,
     CONF_ID,
     CONF_LEVEL,
+    CONF_MAX_VALUE,
     CONF_MEDIA_PLAYER,
+    CONF_MIN_VALUE,
     CONF_SAMPLE_RATE,
     CONF_SPEAKER,
+    CONF_STEP,
     CONF_TRIGGER_ID,
     CONF_VARIANT,
     CONF_VOLUME,
@@ -61,6 +64,7 @@ NoiseDuckAction = noise_ns.class_("NoiseDuckAction", automation.Action, cg.Paren
 NoiseUnduckAction = noise_ns.class_("NoiseUnduckAction", automation.Action, cg.Parented.template(NoiseComponent))
 NoiseSetVolumeAction = noise_ns.class_("NoiseSetVolumeAction", automation.Action, cg.Parented.template(NoiseComponent))
 NoiseSetToneAction = noise_ns.class_("NoiseSetToneAction", automation.Action, cg.Parented.template(NoiseComponent))
+NoiseSetSleepTimerAction = noise_ns.class_("NoiseSetSleepTimerAction", automation.Action, cg.Parented.template(NoiseComponent))
 
 VARIANTS = [
     "white",
@@ -169,6 +173,12 @@ CONFIG_SCHEMA = cv.All(
                 NoiseSleepTimerNumber,
                 icon="mdi:timer-outline",
                 unit_of_measurement="min",
+            ).extend(
+                {
+                    cv.Optional(CONF_MIN_VALUE, default=0.0): cv.float_,
+                    cv.Optional(CONF_MAX_VALUE, default=1440.0): cv.float_,
+                    cv.Optional(CONF_STEP, default=1.0): cv.float_,
+                }
             ),
             cv.Optional(CONF_ON_PLAY): automation.validate_automation(automation.AUTOMATION_SCHEMA),
             cv.Optional(CONF_ON_STOP): automation.validate_automation(automation.AUTOMATION_SCHEMA),
@@ -250,11 +260,12 @@ async def to_code(config):
 
     if CONF_SLEEP_TIMER in config:
         cg.add_define("USE_NUMBER")
+        timer_conf = config[CONF_SLEEP_TIMER]
         timer_var = await number.new_number(
-            config[CONF_SLEEP_TIMER],
-            min_value=0.0,
-            max_value=180.0,
-            step=5.0,
+            timer_conf,
+            min_value=timer_conf[CONF_MIN_VALUE],
+            max_value=timer_conf[CONF_MAX_VALUE],
+            step=timer_conf[CONF_STEP],
         )
         cg.add(timer_var.set_parent(var))
         cg.add(var.set_sleep_timer_number(timer_var))
@@ -419,4 +430,23 @@ async def noise_set_tone_to_code(config, action_id, template_arg, args):
     await cg.register_parented(var, config[CONF_ID])
     template_ = await cg.templatable(config[CONF_TONE], args, cg.float_)
     cg.add(var.set_tone(template_))
+    return var
+
+
+@automation.register_action(
+    "noise.set_sleep_timer",
+    NoiseSetSleepTimerAction,
+    cv.Schema(
+        {
+            cv.GenerateID(): cv.use_id(NoiseComponent),
+            cv.Required(CONF_SLEEP_TIMER): cv.templatable(cv.positive_float),
+        }
+    ),
+    synchronous=True,
+)
+async def noise_set_sleep_timer_to_code(config, action_id, template_arg, args):
+    var = cg.new_Pvariable(action_id, template_arg)
+    await cg.register_parented(var, config[CONF_ID])
+    template_ = await cg.templatable(config[CONF_SLEEP_TIMER], args, cg.float_)
+    cg.add(var.set_sleep_timer(template_))
     return var

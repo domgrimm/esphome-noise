@@ -294,8 +294,23 @@ void NoiseComponent::set_tone(float tone) {
 #endif
 }
 
+float NoiseComponent::get_sleep_timer_remaining_sec() const {
+  if (!this->running_ || this->max_samples_ == 0 || this->time_smp_ >= this->max_samples_)
+    return 0.0f;
+  return static_cast<float>(this->max_samples_ - this->time_smp_) / static_cast<float>(this->rate_);
+}
+
 void NoiseComponent::set_sleep_timer(float minutes) {
   this->sleep_timer_minutes_ = std::max(0.0f, minutes);
+  if (this->running_) {
+    if (this->sleep_timer_minutes_ > 0.0f) {
+      this->max_samples_ = this->time_smp_ + static_cast<uint64_t>(this->sleep_timer_minutes_ * 60.0f * static_cast<float>(this->rate_));
+      ESP_LOGI(TAG, "Sleep timer set to %.1f min while running", this->sleep_timer_minutes_);
+    } else {
+      this->max_samples_ = 0;
+      ESP_LOGI(TAG, "Sleep timer cancelled while running");
+    }
+  }
 #ifdef USE_NUMBER
   if (this->sleep_timer_number_ != nullptr && this->sleep_timer_number_->state != this->sleep_timer_minutes_) {
     this->sleep_timer_number_->publish_state(this->sleep_timer_minutes_);
@@ -472,6 +487,14 @@ void NoiseComponent::stop() {
     return;
   this->stop_req_ = true;
   this->paused_ = false;
+  this->max_samples_ = 0;
+#ifdef USE_NUMBER
+  if (this->sleep_timer_minutes_ > 0.0f) {
+    this->sleep_timer_minutes_ = 0.0f;
+    if (this->sleep_timer_number_ != nullptr)
+      this->sleep_timer_number_->publish_state(0.0f);
+  }
+#endif
 #ifdef USE_SELECT
   if (this->select_ != nullptr)
     this->select_->publish_state("Off");
@@ -497,6 +520,11 @@ void NoiseComponent::finish_() {
       this->media_player_->state = media_player::MEDIA_PLAYER_STATE_IDLE;
       this->media_player_->publish_state();
     }
+#endif
+#ifdef USE_NUMBER
+    this->sleep_timer_minutes_ = 0.0f;
+    if (this->sleep_timer_number_ != nullptr)
+      this->sleep_timer_number_->publish_state(0.0f);
 #endif
     this->stop_callback_.call();
   });
