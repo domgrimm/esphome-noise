@@ -134,6 +134,7 @@ When an external player starts playing, `esphome-noise` smoothly ramps down. Whe
 | Option | Type | Default | Description |
 |---|---|---|---|
 | `speaker` | Optional, ID | | The ID of the `speaker` component to output audio to. (Required unless `airplay_receiver` is set). |
+| `speaker_media_player` | Optional, ID | | The ID of a `media_player` wrapping the speaker. Auto-discovered if defined in YAML. |
 | `airplay_receiver` | Optional, ID | | The ID of an `airplay_receiver` component to output audio directly into the AirPlay 2 backend. |
 | `duck_on_media_players` | Optional, list of IDs | | Media players that trigger automatic noise ducking when active. |
 | `pause_on_media_players` | Optional, list of IDs | | Media players that trigger automatic noise pausing when active. |
@@ -203,6 +204,14 @@ Adjusts internal generator volume without touching hardware master amplifier gai
     volume: 60%  # 0% to 100% (templatable)
 ```
 
+### `noise.set_speaker_volume`
+Adjusts the master hardware speaker volume / amplifier ceiling (also sets the associated media player if configured):
+```yaml
+- noise.set_speaker_volume:
+    id: my_noise
+    volume: 80%  # 0% to 100% (templatable)
+```
+
 ### `noise.set_tone`
 Adjusts the acoustic low-pass filter (0% = warm & deep rumble, 100% = crisp full spectrum):
 ```yaml
@@ -226,10 +235,11 @@ Sets the auto-off sleep timer duration in minutes (`0` cancels the active timer)
 `esphome-noise` includes an optional, mobile-first rewrite of the device's web server dashboard. When enabled, visiting `http://<device-ip>/` presents a dark-mode, tactile dashboard focused completely on the noise generator:
 
 - **12 Interactive Sound Cards**: Quick selection across all 12 sound profiles with active state indicators and volume metering.
-- **Precision Sliders**: Master volume slider with mute toggle and step buttons, tone/low-pass acoustic shaping slider.
+- **Dual Precision Volume Sliders**: Independent controls for **Master Volume** (speaker amplifier output, shared with announcements and alerts) and **Noise Volume** (internal sound generator level), each equipped with fine `−` and `+` step buttons.
+- **Acoustic Tone Shaping**: Smooth low-pass filter slider dialing in warm low rumble vs. crisp bright spectrum.
 - **Sleep Timer & Live Countdown**: Sleep timer presets, expandable custom duration drawer, and synchronized live countdown display.
 - **One-Tap Quick Presets**: Deep Sleep, Rainy Night, Deep Focus, and Ocean Calm.
-- **Embedded & 100% Offline**: Minified and compressed (<8.5 KB gzip) directly in ESP32 flash (`NOISE_INDEX_HTML_GZ` PROGMEM array). Zero external CDNs or internet access required.
+- **Embedded & 100% Offline**: Minified and compressed (<8.7 KB gzip) directly in ESP32 flash (`NOISE_INDEX_HTML_GZ` PROGMEM array). Zero external CDNs or internet access required.
 - **Direct REST API**: Provides `/api/noise` (GET status, POST control) for instant JSON control.
 
 ### Route Hijacking & `webserver-listcomponents` Compatibility
