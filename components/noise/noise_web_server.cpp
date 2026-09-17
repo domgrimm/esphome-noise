@@ -12,6 +12,7 @@
 #endif
 #ifdef USE_WIFI
 #include "esphome/components/wifi/wifi_component.h"
+#include "esphome/components/network/ip_address.h"
 #endif
 
 namespace esphome::noise {
@@ -221,7 +222,8 @@ void NoiseWebHandler::handle_api_request_(AsyncWebServerRequest *request) {
     is_conn = wifi::global_wifi_component->is_connected();
     auto ips = wifi::global_wifi_component->wifi_sta_ip_addresses();
     if (!ips.empty()) {
-      ip_str = ips[0].str();
+      char ip_buf[network::IP_ADDRESS_BUFFER_SIZE];
+      ip_str = ips[0].str_to(ip_buf);
     }
   }
   buf += ",\"wifi_connected\":";
@@ -252,7 +254,8 @@ void NoiseWebHandler::handle_wifi_status_request_(AsyncWebServerRequest *request
     connected = wifi::global_wifi_component->is_connected();
     auto ips = wifi::global_wifi_component->wifi_sta_ip_addresses();
     if (!ips.empty()) {
-      ip_str = ips[0].str();
+      char ip_buf[network::IP_ADDRESS_BUFFER_SIZE];
+      ip_str = ips[0].str_to(ip_buf);
     }
   }
 #endif
