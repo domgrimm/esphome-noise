@@ -23,6 +23,8 @@ class NoiseWebHandler : public AsyncWebHandler {
   void handle_index_request_(AsyncWebServerRequest *request);
   void handle_api_request_(AsyncWebServerRequest *request);
   void handle_wifi_status_request_(AsyncWebServerRequest *request);
+  void handle_wifisave_request_(AsyncWebServerRequest *request);
+  void handle_close_ap_request_(AsyncWebServerRequest *request);
   void defer_(std::function<void()> &&f);
 
   NoiseComponent *parent_{nullptr};
@@ -39,6 +41,7 @@ class NoiseWebServer : public Component {
   void set_show_components(bool show_components) { this->show_components_ = show_components; }
 
   void setup() override;
+  void loop() override;
   void dump_config() override;
   float get_setup_priority() const override { return setup_priority::WIFI; }
 

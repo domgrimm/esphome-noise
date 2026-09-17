@@ -19,6 +19,27 @@ namespace esphome::noise {
 
 static const char *const TAG = "noise.web_server";
 
+#ifdef USE_WIFI
+class WiFiComponentAccessor : public esphome::wifi::WiFiComponent {
+ public:
+  void set_has_ap_flag(bool val) { this->has_ap_ = val; }
+  void disable_ap_now() {
+    this->has_ap_ = true;
+#ifdef USE_CAPTIVE_PORTAL
+    if (captive_portal::global_captive_portal != nullptr && captive_portal::global_captive_portal->is_active()) {
+      captive_portal::global_captive_portal->end();
+    }
+#endif
+    this->wifi_mode_({}, false);
+  }
+};
+
+static bool s_ap_grace_active = false;
+static uint32_t s_ap_grace_start = 0;
+static uint32_t s_save_requested_time = 0;
+static constexpr uint32_t AP_GRACE_PERIOD_MS = 60000;
+#endif
+
 bool NoiseWebHandler::canHandle(AsyncWebServerRequest *request) const {
 #ifdef USE_ESP32
   char url_buf[AsyncWebServerRequest::URL_BUF_SIZE];
@@ -28,16 +49,17 @@ bool NoiseWebHandler::canHandle(AsyncWebServerRequest *request) const {
 #endif
   auto method = request->method();
 
-  if (url == "/api/noise" || url == "/api/noise/" || url == "/api/wifi_status" || url == "/api/wifi_status/")
+  if (url == "/api/noise" || url == "/api/noise/" || url == "/api/wifi_status" || url == "/api/wifi_status/" ||
+      url == "/api/close_ap" || url == "/api/close_ap/")
     return (method == HTTP_GET || method == HTTP_POST);
 
 #ifdef USE_CAPTIVE_PORTAL
   if (captive_portal::global_captive_portal != nullptr && captive_portal::global_captive_portal->is_active()) {
-    // If client sends POST /wifisave, handle it directly by forwarding to captive portal
-    if (url == "/wifisave" && method == HTTP_POST)
+    // Intercept /wifisave for custom grace period handling
+    if (url == "/wifisave")
       return true;
-    // Let native captive portal handle GET /config.json and GET /wifisave
-    if (url == "/config.json" || url == "/wifisave")
+    // Let native captive portal handle GET /config.json
+    if (url == "/config.json")
       return false;
     // Intercept all other GET requests (captive portal probe URLs, root, index.html, etc.)
     if (method == HTTP_GET)
@@ -74,9 +96,14 @@ void NoiseWebHandler::handleRequest(AsyncWebServerRequest *request) {
     return;
   }
 
+  if (url == "/api/close_ap" || url == "/api/close_ap/") {
+    this->handle_close_ap_request_(request);
+    return;
+  }
+
 #ifdef USE_CAPTIVE_PORTAL
-  if (url == "/wifisave" && captive_portal::global_captive_portal != nullptr) {
-    captive_portal::global_captive_portal->handle_wifisave(request);
+  if (url == "/wifisave") {
+    this->handle_wifisave_request_(request);
     return;
   }
 #endif
@@ -270,6 +297,69 @@ void NoiseWebHandler::handle_wifi_status_request_(AsyncWebServerRequest *request
   auto *response = request->beginResponse(200, "application/json", buf.c_str());
   response->addHeader("Access-Control-Allow-Origin", "*");
   request->send(response);
+}
+
+void NoiseWebHandler::handle_wifisave_request_(AsyncWebServerRequest *request) {
+  const auto &ssid = request->arg("ssid");
+  const auto &psk = request->arg("psk");
+  ESP_LOGI(TAG, "Captive portal saving WiFi credentials: SSID='%s'", ssid.c_str());
+
+#ifdef USE_WIFI
+  if (wifi::global_wifi_component != nullptr) {
+    auto *accessor = static_cast<WiFiComponentAccessor *>(wifi::global_wifi_component);
+    // Keep SoftAP broadcasting during connection attempt so the user can see the assigned IP
+    accessor->set_has_ap_flag(false);
+    s_ap_grace_active = true;
+    s_ap_grace_start = 0;
+    s_save_requested_time = millis();
+
+    this->defer_([ssid, psk]() {
+      wifi::global_wifi_component->save_wifi_sta(ssid.c_str(), psk.c_str());
+    });
+  }
+#endif
+
+  auto *response = request->beginResponse(200, "text/plain", "Saved. Connecting...");
+  response->addHeader("Access-Control-Allow-Origin", "*");
+  request->send(response);
+}
+
+void NoiseWebHandler::handle_close_ap_request_(AsyncWebServerRequest *request) {
+#ifdef USE_WIFI
+  if (wifi::global_wifi_component != nullptr) {
+    s_ap_grace_active = false;
+    auto *accessor = static_cast<WiFiComponentAccessor *>(wifi::global_wifi_component);
+    accessor->disable_ap_now();
+    ESP_LOGI(TAG, "SoftAP closed via user request");
+  }
+#endif
+  auto *response = request->beginResponse(200, "application/json", "{\"closed\":true}");
+  response->addHeader("Access-Control-Allow-Origin", "*");
+  request->send(response);
+}
+
+void NoiseWebServer::loop() {
+#if defined(USE_WIFI) && defined(USE_CAPTIVE_PORTAL)
+  if (s_ap_grace_active && wifi::global_wifi_component != nullptr) {
+    if (wifi::global_wifi_component->is_connected()) {
+      if (s_ap_grace_start == 0) {
+        s_ap_grace_start = millis();
+        ESP_LOGI(TAG, "WiFi connected! Keeping SoftAP active for 60s so user can read assigned IP...");
+      } else if (millis() - s_ap_grace_start > AP_GRACE_PERIOD_MS) {
+        ESP_LOGI(TAG, "SoftAP grace period (60s) expired. Disabling AP now.");
+        s_ap_grace_active = false;
+        auto *accessor = static_cast<WiFiComponentAccessor *>(wifi::global_wifi_component);
+        accessor->disable_ap_now();
+      }
+    } else if (s_save_requested_time != 0 && millis() - s_save_requested_time > 35000) {
+      ESP_LOGW(TAG, "WiFi STA connection attempt timed out; restoring AP flag");
+      s_ap_grace_active = false;
+      s_save_requested_time = 0;
+      auto *accessor = static_cast<WiFiComponentAccessor *>(wifi::global_wifi_component);
+      accessor->set_has_ap_flag(true);
+    }
+  }
+#endif
 }
 
 void NoiseWebServer::setup() {

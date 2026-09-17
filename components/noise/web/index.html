@@ -817,15 +817,16 @@
       position: relative;
       display: flex;
       align-items: center;
+      width: 100%;
     }
     .wifi-input {
       width: 100%;
       background: var(--card-elevated);
       border: 1px solid var(--border);
       border-radius: var(--radius-sm);
-      padding: 8px 12px;
+      padding: 9px 12px;
       color: var(--text-main);
-      font-size: 0.82rem;
+      font-size: 16px; /* 16px font-size prevents iOS WebKit auto-zoom */
       outline: none;
       transition: border-color 0.15s;
     }
@@ -835,17 +836,39 @@
     .wifi-show-pw-btn {
       position: absolute;
       right: 8px;
-      background: transparent;
-      border: none;
-      color: var(--text-dim);
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text-muted);
       font-size: 0.72rem;
       font-weight: 500;
       cursor: pointer;
-      padding: 4px 6px;
+      padding: 4px 8px;
       border-radius: 4px;
+      z-index: 2;
     }
     .wifi-show-pw-btn:hover {
+      background: rgba(255, 255, 255, 0.14);
       color: var(--text-main);
+    }
+    .wifi-close-ap-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-dim);
+      font-size: 0.7rem;
+      padding: 3px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .wifi-close-ap-btn:hover {
+      color: var(--text-main);
+      border-color: var(--border-focus);
+    }
+    .wifi-close-ap-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
     }
     .wifi-connect-btn {
       width: 100%;
@@ -1155,15 +1178,13 @@
         <div class="wifi-form">
           <div class="wifi-input-wrap">
             <label class="wifi-input-label" for="wifi-ssid-input">Network Name (SSID)</label>
-            <input type="text" class="wifi-input" id="wifi-ssid-input" placeholder="Tap network above or enter SSID" maxlength="32" autocomplete="off" autocapitalize="off" spellcheck="false">
+            <input type="text" class="wifi-input" id="wifi-ssid-input" placeholder="Tap network above or enter SSID" maxlength="32" autocomplete="off" autocapitalize="off" spellcheck="false" readonly onfocus="this.removeAttribute('readonly')" onpointerdown="this.removeAttribute('readonly')">
           </div>
           <div class="wifi-input-wrap">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-              <label class="wifi-input-label" for="wifi-psk-input">Password</label>
-              <button type="button" class="wifi-show-pw-btn" id="wifi-show-pw-btn">Show</button>
-            </div>
+            <label class="wifi-input-label" for="wifi-psk-input">Password</label>
             <div class="wifi-input-row">
-              <input type="password" class="wifi-input" id="wifi-psk-input" placeholder="Password (leave empty if open)" maxlength="64" autocomplete="current-password">
+              <input type="password" class="wifi-input" id="wifi-psk-input" placeholder="Password (leave empty if open)" maxlength="64" autocomplete="current-password" readonly onfocus="this.removeAttribute('readonly')" onpointerdown="this.removeAttribute('readonly')" style="padding-right: 58px;">
+              <button type="button" class="wifi-show-pw-btn" id="wifi-show-pw-btn">Show</button>
             </div>
           </div>
           <button type="button" class="wifi-connect-btn" id="wifi-connect-btn">Connect to Wi-Fi</button>
@@ -1788,11 +1809,13 @@
       item.classList.add('selected');
       const ssid = item.dataset.ssid;
       const isLocked = item.dataset.lock === '1';
-      document.getElementById('wifi-ssid-input').value = ssid;
+      const ssidInput = document.getElementById('wifi-ssid-input');
+      ssidInput.removeAttribute('readonly');
+      ssidInput.value = ssid;
       const pskInput = document.getElementById('wifi-psk-input');
+      pskInput.removeAttribute('readonly');
       if (isLocked) {
         pskInput.placeholder = 'Enter password';
-        pskInput.focus();
       } else {
         pskInput.value = '';
         pskInput.placeholder = 'Open network (no password)';
@@ -1844,6 +1867,22 @@
 
     let wifiPollTimer = null;
 
+    async function closeHotspotNow() {
+      const closeBtn = document.getElementById('wifi-close-ap-btn');
+      if (closeBtn) {
+        closeBtn.textContent = 'Closing...';
+        closeBtn.disabled = true;
+      }
+      try {
+        await fetchWithTimeout('/api/close_ap', 2000);
+      } catch (e) {}
+      if (closeBtn) {
+        closeBtn.textContent = 'Hotspot Closed';
+      }
+      const banner = document.getElementById('hotspot-banner');
+      if (banner) banner.classList.remove('visible');
+    }
+
     function showConnectedSuccess(ssid, ip, hostname) {
       const statusMsg = document.getElementById('wifi-status-msg');
       const btn = document.getElementById('wifi-connect-btn');
@@ -1853,10 +1892,10 @@
 
       const hostDisplay = (hostname && hostname.endsWith('.local')) ? hostname : (hostname ? `${hostname}.local` : '');
       statusMsg.innerHTML = `
-        <div style="font-weight:600; font-size:0.82rem; margin-bottom:4px;">
+        <div style="font-weight:600; font-size:0.85rem; margin-bottom:4px; color:#22c55e;">
           ✓ Connected to ${escapeHtml(ssid)}
         </div>
-        <div>The speaker joined your Wi-Fi network and received an IP address.</div>
+        <div style="font-size:0.75rem; color:var(--text-main);">The speaker joined your Wi-Fi network and received an IP address.</div>
         <div class="wifi-success-details">
           <div class="wifi-ip-row">
             <span class="wifi-ip-label">Assigned IP</span>
@@ -1868,18 +1907,22 @@
             <span class="wifi-ip-val">${escapeHtml(hostDisplay)}</span>
           </div>` : ''}
           <div class="wifi-redirect-btns">
-            <a href="http://${escapeHtml(ip)}" class="wifi-redirect-btn">Open IP (${escapeHtml(ip)})</a>
-            ${hostDisplay ? `<a href="http://${escapeHtml(hostDisplay)}" class="wifi-redirect-btn secondary">Open .local</a>` : ''}
+            <a href="http://${escapeHtml(ip)}" class="wifi-redirect-btn" target="_blank" rel="noopener">Open IP (${escapeHtml(ip)})</a>
+            ${hostDisplay ? `<a href="http://${escapeHtml(hostDisplay)}" class="wifi-redirect-btn secondary" target="_blank" rel="noopener">Open .local</a>` : ''}
+          </div>
+          <div style="margin-top:8px; display:flex; justify-content:space-between; align-items:center; border-top:1px solid rgba(255,255,255,0.06); padding-top:6px;">
+            <span style="font-size:0.68rem; color:var(--text-dim);">Hotspot closing in ~60s</span>
+            <button type="button" id="wifi-close-ap-btn" class="wifi-close-ap-btn">Close Hotspot Now</button>
           </div>
         </div>
       `;
+      const closeBtn = document.getElementById('wifi-close-ap-btn');
+      if (closeBtn) closeBtn.addEventListener('click', closeHotspotNow);
       const badge = document.getElementById('wifi-badge');
       if (badge) {
         badge.textContent = ip;
         badge.style.display = 'inline-flex';
       }
-      const banner = document.getElementById('hotspot-banner');
-      if (banner) banner.classList.remove('visible');
     }
 
     function showConnectedFallback(ssid, hostname) {
