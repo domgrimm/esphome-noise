@@ -1154,7 +1154,7 @@
     </div>
 
     <!-- Wi-Fi Setup Card -->
-    <div class="card wifi-card" id="wifi-card">
+    <div class="card wifi-card" id="wifi-card" style="display: none;">
       <div class="wifi-card-header" id="wifi-card-toggle">
         <div class="wifi-card-title-wrap">
           <svg class="wifi-card-icon" viewBox="0 0 24 24"><path d="M12 4C7.31 4 3.07 5.9 0 8.98L12 21 24 8.98C20.93 5.9 16.69 4 12 4zm0 3.84c3.64 0 6.94 1.48 9.35 3.88L12 19.16 2.65 11.72C5.06 9.32 8.36 7.84 12 7.84z"/></svg>
@@ -1711,10 +1711,16 @@
           }
           if (data.hostname) state.hostname = data.hostname;
           if (data.ip_address) state.ip_address = data.ip_address;
-          if (data.captive_portal) {
+          if (data.wifi_connected !== undefined) state.wifi_connected = data.wifi_connected;
+
+          const wifiCard = document.getElementById('wifi-card');
+          const isCaptive = !!data.captive_portal;
+          const isWifiConnected = (data.wifi_connected === true);
+
+          if (isCaptive) {
             document.getElementById('hotspot-banner').classList.add('visible');
             document.getElementById('wifi-badge').style.display = 'inline-flex';
-            const wifiCard = document.getElementById('wifi-card');
+            wifiCard.style.display = '';
             if (!wifiCard.dataset.userToggled) {
               wifiCard.classList.add('open');
             }
@@ -1724,6 +1730,11 @@
           } else {
             document.getElementById('hotspot-banner').classList.remove('visible');
             document.getElementById('wifi-badge').style.display = 'none';
+            if (isWifiConnected && !isWifiConnecting) {
+              wifiCard.style.display = 'none';
+            } else if (!isWifiConnected) {
+              wifiCard.style.display = '';
+            }
           }
           updateUI();
         }
@@ -1732,6 +1743,7 @@
 
     // Wi-Fi Captive Portal & Network Selection
     let wifiScanLoaded = false;
+    let isWifiConnecting = false;
 
     function renderWifiSignalSvg(rssi) {
       const level = rssi >= -65 ? 3 : (rssi >= -78 ? 2 : 1);
@@ -1868,6 +1880,7 @@
     let wifiPollTimer = null;
 
     async function closeHotspotNow() {
+      isWifiConnecting = false;
       const closeBtn = document.getElementById('wifi-close-ap-btn');
       if (closeBtn) {
         closeBtn.textContent = 'Closing...';
@@ -1881,6 +1894,10 @@
       }
       const banner = document.getElementById('hotspot-banner');
       if (banner) banner.classList.remove('visible');
+      const wifiCard = document.getElementById('wifi-card');
+      if (state.wifi_connected) {
+        wifiCard.style.display = 'none';
+      }
     }
 
     function showConnectedSuccess(ssid, ip, hostname) {
@@ -1955,6 +1972,7 @@
         return;
       }
 
+      isWifiConnecting = true;
       btn.disabled = true;
       btn.textContent = 'Saving...';
       statusMsg.className = 'wifi-status-msg visible loading';
@@ -2119,11 +2137,16 @@
     });
 
     async function init() {
+      if (isMock) {
+        document.getElementById('wifi-card').style.display = '';
+      }
       // If accessed via default fallback AP IP (192.168.4.1), immediately activate hotspot mode
       if (window.location.hostname === '192.168.4.1') {
         document.getElementById('hotspot-banner').classList.add('visible');
         document.getElementById('wifi-badge').style.display = 'inline-flex';
-        document.getElementById('wifi-card').classList.add('open');
+        const wifiCard = document.getElementById('wifi-card');
+        wifiCard.style.display = '';
+        wifiCard.classList.add('open');
         fetchWifiNetworks();
       }
 
