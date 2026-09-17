@@ -10,6 +10,9 @@
 #ifdef USE_CAPTIVE_PORTAL
 #include "esphome/components/captive_portal/captive_portal.h"
 #endif
+#ifdef USE_WIFI
+#include "esphome/components/wifi/wifi_component.h"
+#endif
 
 namespace esphome::noise {
 
@@ -24,7 +27,7 @@ bool NoiseWebHandler::canHandle(AsyncWebServerRequest *request) const {
 #endif
   auto method = request->method();
 
-  if (url == "/api/noise" || url == "/api/noise/")
+  if (url == "/api/noise" || url == "/api/noise/" || url == "/api/wifi_status" || url == "/api/wifi_status/")
     return (method == HTTP_GET || method == HTTP_POST);
 
 #ifdef USE_CAPTIVE_PORTAL
@@ -62,6 +65,11 @@ void NoiseWebHandler::handleRequest(AsyncWebServerRequest *request) {
 
   if (url == "/api/noise" || url == "/api/noise/") {
     this->handle_api_request_(request);
+    return;
+  }
+
+  if (url == "/api/wifi_status" || url == "/api/wifi_status/") {
+    this->handle_wifi_status_request_(request);
     return;
   }
 
@@ -206,9 +214,59 @@ void NoiseWebHandler::handle_api_request_(AsyncWebServerRequest *request) {
 #else
   buf += ",\"captive_portal\":false";
 #endif
+#ifdef USE_WIFI
+  std::string ip_str = "";
+  bool is_conn = false;
+  if (wifi::global_wifi_component != nullptr) {
+    is_conn = wifi::global_wifi_component->is_connected();
+    auto ips = wifi::global_wifi_component->wifi_sta_ip_addresses();
+    if (!ips.empty()) {
+      ip_str = ips[0].str();
+    }
+  }
+  buf += ",\"wifi_connected\":";
+  buf += is_conn ? "true" : "false";
+  buf += ",\"ip_address\":\"";
+  buf += ip_str;
+  buf += "\"";
+#else
+  buf += ",\"wifi_connected\":false,\"ip_address\":\"\"";
+#endif
+  buf += ",\"hostname\":\"";
+  buf += App.get_name();
+  buf += ".local\"";
   buf += "}";
 
-  request->send(200, "application/json", buf.c_str());
+  auto *response = request->beginResponse(200, "application/json", buf.c_str());
+  response->addHeader("Access-Control-Allow-Origin", "*");
+  request->send(response);
+}
+
+void NoiseWebHandler::handle_wifi_status_request_(AsyncWebServerRequest *request) {
+  std::string buf;
+  buf.reserve(160);
+  std::string ip_str = "";
+  bool connected = false;
+#ifdef USE_WIFI
+  if (wifi::global_wifi_component != nullptr) {
+    connected = wifi::global_wifi_component->is_connected();
+    auto ips = wifi::global_wifi_component->wifi_sta_ip_addresses();
+    if (!ips.empty()) {
+      ip_str = ips[0].str();
+    }
+  }
+#endif
+  buf += "{\"connected\":";
+  buf += connected ? "true" : "false";
+  buf += ",\"ip\":\"";
+  buf += ip_str;
+  buf += "\",\"hostname\":\"";
+  buf += App.get_name();
+  buf += ".local\"}";
+
+  auto *response = request->beginResponse(200, "application/json", buf.c_str());
+  response->addHeader("Access-Control-Allow-Origin", "*");
+  request->send(response);
 }
 
 void NoiseWebServer::setup() {

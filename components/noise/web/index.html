@@ -895,6 +895,63 @@
       border: 1px solid rgba(245, 158, 11, 0.25);
       color: var(--accent);
     }
+    .wifi-success-details {
+      margin-top: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .wifi-ip-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 0.76rem;
+    }
+    .wifi-ip-label {
+      color: var(--text-muted);
+    }
+    .wifi-ip-val {
+      font-family: monospace;
+      font-weight: 700;
+      color: var(--accent);
+    }
+    .wifi-redirect-btns {
+      display: flex;
+      gap: 8px;
+      margin-top: 6px;
+    }
+    .wifi-redirect-btn {
+      flex: 1;
+      padding: 8px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--accent);
+      background: var(--accent);
+      color: #121212 !important;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-align: center;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+    .wifi-redirect-btn.secondary {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: var(--border);
+      color: var(--text-bright) !important;
+    }
+    .wifi-redirect-btn:hover {
+      opacity: 0.9;
+    }
+    .wifi-redirect-btn:active {
+      transform: scale(0.98);
+    }
 
     /* Advanced OTA */
     .wifi-advanced-toggle {
@@ -1631,6 +1688,8 @@
           if (data.title) {
             document.getElementById('app-title').textContent = data.title;
           }
+          if (data.hostname) state.hostname = data.hostname;
+          if (data.ip_address) state.ip_address = data.ip_address;
           if (data.captive_portal) {
             document.getElementById('hotspot-banner').classList.add('visible');
             document.getElementById('wifi-badge').style.display = 'inline-flex';
@@ -1777,6 +1836,70 @@
       if (chv) chv.style.transform = adv.classList.contains('open') ? 'rotate(180deg)' : 'none';
     });
 
+    function fetchWithTimeout(url, ms = 1500) {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), ms);
+      return fetch(url, { signal: controller.signal }).finally(() => clearTimeout(id));
+    }
+
+    let wifiPollTimer = null;
+
+    function showConnectedSuccess(ssid, ip, hostname) {
+      const statusMsg = document.getElementById('wifi-status-msg');
+      const btn = document.getElementById('wifi-connect-btn');
+      btn.disabled = false;
+      btn.textContent = 'Connected';
+      statusMsg.className = 'wifi-status-msg visible success';
+
+      const hostDisplay = (hostname && hostname.endsWith('.local')) ? hostname : (hostname ? `${hostname}.local` : '');
+      statusMsg.innerHTML = `
+        <div style="font-weight:600; font-size:0.82rem; margin-bottom:4px;">
+          ✓ Connected to ${escapeHtml(ssid)}
+        </div>
+        <div>The speaker joined your Wi-Fi network and received an IP address.</div>
+        <div class="wifi-success-details">
+          <div class="wifi-ip-row">
+            <span class="wifi-ip-label">Assigned IP</span>
+            <span class="wifi-ip-val">${escapeHtml(ip)}</span>
+          </div>
+          ${hostDisplay ? `
+          <div class="wifi-ip-row">
+            <span class="wifi-ip-label">Local Hostname</span>
+            <span class="wifi-ip-val">${escapeHtml(hostDisplay)}</span>
+          </div>` : ''}
+          <div class="wifi-redirect-btns">
+            <a href="http://${escapeHtml(ip)}" class="wifi-redirect-btn">Open IP (${escapeHtml(ip)})</a>
+            ${hostDisplay ? `<a href="http://${escapeHtml(hostDisplay)}" class="wifi-redirect-btn secondary">Open .local</a>` : ''}
+          </div>
+        </div>
+      `;
+      const badge = document.getElementById('wifi-badge');
+      if (badge) {
+        badge.textContent = ip;
+        badge.style.display = 'inline-flex';
+      }
+      const banner = document.getElementById('hotspot-banner');
+      if (banner) banner.classList.remove('visible');
+    }
+
+    function showConnectedFallback(ssid, hostname) {
+      const statusMsg = document.getElementById('wifi-status-msg');
+      statusMsg.className = 'wifi-status-msg visible success';
+      const hostDisplay = (hostname && hostname.endsWith('.local')) ? hostname : (hostname ? `${hostname}.local` : '');
+      statusMsg.innerHTML = `
+        <div style="font-weight:600; font-size:0.82rem; margin-bottom:4px;">
+          Credentials Saved
+        </div>
+        <div>The speaker is joining <em>${escapeHtml(ssid)}</em>. The setup hotspot has shut down. Reconnect your device to <strong>${escapeHtml(ssid)}</strong> to access the dashboard:</div>
+        <div class="wifi-success-details">
+          ${hostDisplay ? `
+          <div class="wifi-redirect-btns">
+            <a href="http://${escapeHtml(hostDisplay)}" class="wifi-redirect-btn">Open http://${escapeHtml(hostDisplay)}</a>
+          </div>` : ''}
+        </div>
+      `;
+    }
+
     async function handleWifiConnect() {
       const ssid = document.getElementById('wifi-ssid-input').value.trim();
       const psk = document.getElementById('wifi-psk-input').value;
@@ -1794,17 +1917,78 @@
       statusMsg.className = 'wifi-status-msg visible loading';
       statusMsg.textContent = `Saving credentials for "${ssid}" and connecting...`;
 
+      if (isMock) {
+        setTimeout(() => {
+          showConnectedSuccess(ssid, '192.168.1.150', 'office-alert-speaker.local');
+        }, 1500);
+        return;
+      }
+
       try {
         const url = `/wifisave?ssid=${encodeURIComponent(ssid)}&psk=${encodeURIComponent(psk)}`;
-        await fetch(url);
-        statusMsg.className = 'wifi-status-msg visible success';
-        statusMsg.innerHTML = `<strong>Credentials saved!</strong> Connecting to <em>${escapeHtml(ssid)}</em>. The setup hotspot will shut down and the speaker will join your network.`;
-        btn.textContent = 'Saved';
+        await fetchWithTimeout(url, 4000).catch(() => {});
       } catch (err) {
-        statusMsg.className = 'wifi-status-msg visible loading';
-        statusMsg.textContent = `Connecting to ${ssid}... The speaker will switch to this Wi-Fi network.`;
-        btn.textContent = 'Connecting...';
+        // Connection may drop immediately upon save
       }
+
+      statusMsg.textContent = `Connecting to "${ssid}"... Waiting for assigned IP address...`;
+      btn.textContent = 'Connecting...';
+
+      let attempts = 0;
+      const maxAttempts = 30;
+      const targetHost = state.hostname || (window.location.hostname !== '192.168.4.1' ? window.location.hostname : '');
+
+      if (wifiPollTimer) clearInterval(wifiPollTimer);
+
+      const checkStatus = async () => {
+        attempts++;
+
+        // Attempt 1: Query relative /api/wifi_status (works while still on AP or if already on LAN)
+        try {
+          const res = await fetchWithTimeout('/api/wifi_status', 1200);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.connected && data.ip) {
+              clearInterval(wifiPollTimer);
+              wifiPollTimer = null;
+              showConnectedSuccess(ssid, data.ip, data.hostname || targetHost);
+              return;
+            }
+          }
+        } catch (e) {
+          // relative probe failed (e.g. AP shut down)
+        }
+
+        // Attempt 2: Probe targetHost if known and not already viewing it
+        if (targetHost && window.location.hostname !== targetHost) {
+          try {
+            const hostUrl = targetHost.endsWith('.local') ? targetHost : `${targetHost}.local`;
+            const res2 = await fetchWithTimeout(`http://${hostUrl}/api/wifi_status`, 1200);
+            if (res2.ok) {
+              const data2 = await res2.json();
+              if (data2.connected && data2.ip) {
+                clearInterval(wifiPollTimer);
+                wifiPollTimer = null;
+                showConnectedSuccess(ssid, data2.ip, data2.hostname || targetHost);
+                return;
+              }
+            }
+          } catch (e) {
+            // cross-origin probe failed (e.g. device still switching networks)
+          }
+        }
+
+        if (attempts >= maxAttempts) {
+          clearInterval(wifiPollTimer);
+          wifiPollTimer = null;
+          btn.disabled = false;
+          btn.textContent = 'Connect to Wi-Fi';
+          showConnectedFallback(ssid, targetHost);
+        }
+      };
+
+      wifiPollTimer = setInterval(checkStatus, 1000);
+      checkStatus();
     }
     document.getElementById('wifi-connect-btn').addEventListener('click', handleWifiConnect);
 
