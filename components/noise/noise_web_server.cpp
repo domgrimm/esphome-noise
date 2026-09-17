@@ -7,6 +7,10 @@
 #include "esphome/core/helpers.h"
 #include "esphome/core/application.h"
 
+#ifdef USE_CAPTIVE_PORTAL
+#include "esphome/components/captive_portal/captive_portal.h"
+#endif
+
 namespace esphome::noise {
 
 static const char *const TAG = "noise.web_server";
@@ -20,50 +24,55 @@ bool NoiseWebHandler::canHandle(AsyncWebServerRequest *request) const {
 #endif
   auto method = request->method();
 
-  if (method == HTTP_GET && (url == "/" || url == "/index.html" || url == "/favicon.ico"))
-    return true;
-
   if (url == "/api/noise" || url == "/api/noise/")
     return (method == HTTP_GET || method == HTTP_POST);
+
+#ifdef USE_CAPTIVE_PORTAL
+  if (captive_portal::global_captive_portal != nullptr && captive_portal::global_captive_portal->is_active()) {
+    // If client sends POST /wifisave, handle it directly by forwarding to captive portal
+    if (url == "/wifisave" && method == HTTP_POST)
+      return true;
+    // Let native captive portal handle GET /config.json and GET /wifisave
+    if (url == "/config.json" || url == "/wifisave")
+      return false;
+    // Intercept all other GET requests (captive portal probe URLs, root, index.html, etc.)
+    if (method == HTTP_GET)
+      return true;
+  }
+#endif
+
+  if (method == HTTP_GET && (url == "/" || url == "/index.html" || url == "/favicon.ico"))
+    return true;
 
   return false;
 }
 
 void NoiseWebHandler::handleRequest(AsyncWebServerRequest *request) {
-  bool is_index = false;
-  bool is_api = false;
-  bool is_favicon = false;
-
-  {
 #ifdef USE_ESP32
-    char url_buf[AsyncWebServerRequest::URL_BUF_SIZE];
-    StringRef url = request->url_to(url_buf);
+  char url_buf[AsyncWebServerRequest::URL_BUF_SIZE];
+  StringRef url = request->url_to(url_buf);
 #else
-    const auto &url = request->url();
+  const auto &url = request->url();
 #endif
-    if (url == "/" || url == "/index.html") {
-      is_index = true;
-    } else if (url == "/api/noise" || url == "/api/noise/") {
-      is_api = true;
-    } else if (url == "/favicon.ico") {
-      is_favicon = true;
-    }
-  }
 
-  if (is_favicon) {
+  if (url == "/favicon.ico") {
     request->send(204);
     return;
   }
 
-  if (is_index) {
-    this->handle_index_request_(request);
-    return;
-  }
-
-  if (is_api) {
+  if (url == "/api/noise" || url == "/api/noise/") {
     this->handle_api_request_(request);
     return;
   }
+
+#ifdef USE_CAPTIVE_PORTAL
+  if (url == "/wifisave" && captive_portal::global_captive_portal != nullptr) {
+    captive_portal::global_captive_portal->handle_wifisave(request);
+    return;
+  }
+#endif
+
+  this->handle_index_request_(request);
 }
 
 void NoiseWebHandler::handle_index_request_(AsyncWebServerRequest *request) {
@@ -154,7 +163,7 @@ void NoiseWebHandler::handle_api_request_(AsyncWebServerRequest *request) {
 
   // GET: Read-only serialization on heap
   std::string buf;
-  buf.reserve(384);
+  buf.reserve(512);
   char temp[32];
   buf += "{\"title\":\"";
   buf += this->title_;
@@ -191,6 +200,12 @@ void NoiseWebHandler::handle_api_request_(AsyncWebServerRequest *request) {
   buf += temp;
   buf += ",\"muted\":";
   buf += this->parent_->is_muted() ? "true" : "false";
+#ifdef USE_CAPTIVE_PORTAL
+  buf += ",\"captive_portal\":";
+  buf += (captive_portal::global_captive_portal != nullptr && captive_portal::global_captive_portal->is_active()) ? "true" : "false";
+#else
+  buf += ",\"captive_portal\":false";
+#endif
   buf += "}";
 
   request->send(200, "application/json", buf.c_str());

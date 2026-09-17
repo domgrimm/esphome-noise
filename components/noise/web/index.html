@@ -588,6 +588,361 @@
       cursor: pointer;
     }
     .btn-press:active { transform: scale(0.95); }
+
+    /* Hotspot Banner */
+    .hotspot-banner {
+      display: none;
+      background: rgba(245, 158, 11, 0.08);
+      border: 1px solid rgba(245, 158, 11, 0.25);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      gap: 12px;
+      align-items: flex-start;
+    }
+    .hotspot-banner.visible {
+      display: flex;
+    }
+    .hotspot-banner-icon {
+      width: 20px;
+      height: 20px;
+      flex-shrink: 0;
+      fill: var(--accent);
+      margin-top: 1px;
+    }
+    .hotspot-banner-body {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .hotspot-banner-title {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--accent);
+      letter-spacing: -0.01em;
+    }
+    .hotspot-banner-desc {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    /* Wi-Fi Setup Card */
+    .wifi-card {
+      padding: 0;
+      overflow: hidden;
+    }
+    .wifi-card-header {
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.15s;
+    }
+    .wifi-card-header:hover {
+      background: var(--card-elevated);
+    }
+    .wifi-card-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .wifi-card-icon {
+      width: 18px;
+      height: 18px;
+      fill: var(--text-dim);
+    }
+    .wifi-card-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+    .wifi-card-sub {
+      font-size: 0.7rem;
+      color: var(--text-dim);
+      font-family: var(--font-mono);
+      margin-top: 1px;
+    }
+    .wifi-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      font-size: 0.68rem;
+      font-weight: 600;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .wifi-refresh-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      background: var(--card-elevated);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+    }
+    .wifi-refresh-btn:hover {
+      color: var(--text-main);
+      background: var(--card-hover);
+    }
+    .wifi-refresh-btn svg {
+      width: 14px;
+      height: 14px;
+      fill: currentColor;
+      transition: transform 0.3s;
+    }
+    .wifi-refresh-btn.spinning svg {
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .wifi-chevron {
+      transition: transform 0.2s;
+    }
+    .wifi-card-content {
+      display: none;
+      padding: 0 16px 16px;
+      border-top: 1px solid var(--border);
+      flex-direction: column;
+      gap: 14px;
+    }
+    .wifi-card.open .wifi-card-content {
+      display: flex;
+    }
+    .wifi-card.open .wifi-chevron {
+      transform: rotate(180deg);
+    }
+
+    /* Network list */
+    .wifi-net-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 220px;
+      overflow-y: auto;
+      margin-top: 12px;
+    }
+    .wifi-net-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 12px;
+      background: var(--card-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .wifi-net-item:hover {
+      background: var(--card-hover);
+      border-color: var(--border-focus);
+    }
+    .wifi-net-item.selected {
+      border-color: #ffffff;
+      background: rgba(255, 255, 255, 0.06);
+    }
+    .wifi-net-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      overflow: hidden;
+    }
+    .wifi-net-ssid {
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .wifi-net-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .wifi-net-rssi {
+      font-size: 0.68rem;
+      color: var(--text-dim);
+      font-family: var(--font-mono);
+    }
+    .wifi-lock-icon {
+      width: 13px;
+      height: 13px;
+      fill: var(--text-dim);
+    }
+    .wifi-sig-icon {
+      width: 16px;
+      height: 16px;
+      fill: var(--text-muted);
+      flex-shrink: 0;
+    }
+    .wifi-net-empty {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      text-align: center;
+      padding: 16px 0;
+    }
+
+    /* Form */
+    .wifi-form {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .wifi-input-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .wifi-input-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .wifi-input-row {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    .wifi-input {
+      width: 100%;
+      background: var(--card-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 8px 12px;
+      color: var(--text-main);
+      font-size: 0.82rem;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .wifi-input:focus {
+      border-color: var(--border-focus);
+    }
+    .wifi-show-pw-btn {
+      position: absolute;
+      right: 8px;
+      background: transparent;
+      border: none;
+      color: var(--text-dim);
+      font-size: 0.72rem;
+      font-weight: 500;
+      cursor: pointer;
+      padding: 4px 6px;
+      border-radius: 4px;
+    }
+    .wifi-show-pw-btn:hover {
+      color: var(--text-main);
+    }
+    .wifi-connect-btn {
+      width: 100%;
+      padding: 10px 0;
+      background: #ffffff;
+      color: #000000;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.1s;
+      margin-top: 2px;
+    }
+    .wifi-connect-btn:hover {
+      opacity: 0.92;
+    }
+    .wifi-connect-btn:active {
+      transform: scale(0.98);
+    }
+    .wifi-connect-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    .wifi-status-msg {
+      font-size: 0.75rem;
+      line-height: 1.4;
+      border-radius: var(--radius-sm);
+      display: none;
+    }
+    .wifi-status-msg.visible {
+      display: block;
+      padding: 10px 12px;
+    }
+    .wifi-status-msg.error {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.25);
+      color: #ef4444;
+    }
+    .wifi-status-msg.success {
+      background: rgba(34, 197, 94, 0.1);
+      border: 1px solid rgba(34, 197, 94, 0.25);
+      color: #22c55e;
+    }
+    .wifi-status-msg.loading {
+      background: rgba(245, 158, 11, 0.1);
+      border: 1px solid rgba(245, 158, 11, 0.25);
+      color: var(--accent);
+    }
+
+    /* Advanced OTA */
+    .wifi-advanced-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.72rem;
+      font-weight: 500;
+      color: var(--text-dim);
+      cursor: pointer;
+      padding: 6px 0 0;
+      user-select: none;
+    }
+    .wifi-advanced-toggle:hover {
+      color: var(--text-muted);
+    }
+    .wifi-advanced-content {
+      display: none;
+      flex-direction: column;
+      gap: 8px;
+      padding-top: 6px;
+    }
+    .wifi-advanced-content.open {
+      display: flex;
+    }
+    .ota-form {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .ota-file-input {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+    }
+    .ota-upload-btn {
+      padding: 6px 12px;
+      background: var(--card-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-main);
+      font-size: 0.72rem;
+      font-weight: 500;
+      cursor: pointer;
+      align-self: flex-start;
+    }
+    .ota-upload-btn:hover {
+      background: var(--card-hover);
+    }
   </style>
 </head>
 <body>
@@ -600,6 +955,15 @@
         <span id="status-text">Standby</span>
       </div>
     </header>
+
+    <!-- Hotspot Active Banner (shown in captive portal mode) -->
+    <div class="hotspot-banner" id="hotspot-banner">
+      <svg class="hotspot-banner-icon" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+      <div class="hotspot-banner-body">
+        <div class="hotspot-banner-title">Offline Hotspot Mode</div>
+        <div class="hotspot-banner-desc">Sound generator is ready to play offline. To connect the speaker to a Wi-Fi network, select one below.</div>
+      </div>
+    </div>
 
     <!-- Player Core -->
     <div class="card player-hero">
@@ -705,6 +1069,58 @@
             <button class="step-btn" id="custom-timer-plus" type="button" aria-label="Add 5 minutes">+</button>
             <button class="custom-timer-set-btn" id="custom-timer-set" type="button">Set</button>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Wi-Fi Setup Card -->
+    <div class="card wifi-card" id="wifi-card">
+      <div class="wifi-card-header" id="wifi-card-toggle">
+        <div class="wifi-card-title-wrap">
+          <svg class="wifi-card-icon" viewBox="0 0 24 24"><path d="M12 4C7.31 4 3.07 5.9 0 8.98L12 21 24 8.98C20.93 5.9 16.69 4 12 4zm0 3.84c3.64 0 6.94 1.48 9.35 3.88L12 19.16 2.65 11.72C5.06 9.32 8.36 7.84 12 7.84z"/></svg>
+          <div>
+            <div class="wifi-card-title">Wi-Fi Setup</div>
+            <div class="wifi-card-sub" id="wifi-card-sub">Available Networks</div>
+          </div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span class="wifi-badge" id="wifi-badge" style="display:none;">Hotspot</span>
+          <button class="wifi-refresh-btn" id="wifi-refresh-btn" title="Scan Wi-Fi Networks" type="button">
+            <svg viewBox="0 0 24 24" id="wifi-refresh-icon"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+          </button>
+          <svg class="chevron-icon wifi-chevron" id="wifi-chevron" viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
+        </div>
+      </div>
+      <div class="wifi-card-content" id="wifi-card-content">
+        <div class="wifi-net-list" id="wifi-net-list">
+          <div class="wifi-net-empty">Loading networks...</div>
+        </div>
+        <div class="wifi-form">
+          <div class="wifi-input-wrap">
+            <label class="wifi-input-label" for="wifi-ssid-input">Network Name (SSID)</label>
+            <input type="text" class="wifi-input" id="wifi-ssid-input" placeholder="Tap network above or enter SSID" maxlength="32" autocomplete="off" autocapitalize="off" spellcheck="false">
+          </div>
+          <div class="wifi-input-wrap">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <label class="wifi-input-label" for="wifi-psk-input">Password</label>
+              <button type="button" class="wifi-show-pw-btn" id="wifi-show-pw-btn">Show</button>
+            </div>
+            <div class="wifi-input-row">
+              <input type="password" class="wifi-input" id="wifi-psk-input" placeholder="Password (leave empty if open)" maxlength="64" autocomplete="current-password">
+            </div>
+          </div>
+          <button type="button" class="wifi-connect-btn" id="wifi-connect-btn">Connect to Wi-Fi</button>
+          <div class="wifi-status-msg" id="wifi-status-msg"></div>
+        </div>
+        <div class="wifi-advanced-toggle" id="wifi-advanced-toggle">
+          <span>Firmware Update (OTA)</span>
+          <svg class="chevron-icon" id="wifi-advanced-chevron" style="width:13px; height:13px;" viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
+        </div>
+        <div class="wifi-advanced-content" id="wifi-advanced-content">
+          <form method="POST" action="/update" enctype="multipart/form-data" class="ota-form">
+            <input type="file" name="update" class="ota-file-input" accept=".bin">
+            <button type="submit" class="ota-upload-btn">Upload .bin</button>
+          </form>
         </div>
       </div>
     </div>
@@ -1215,10 +1631,182 @@
           if (data.title) {
             document.getElementById('app-title').textContent = data.title;
           }
+          if (data.captive_portal) {
+            document.getElementById('hotspot-banner').classList.add('visible');
+            document.getElementById('wifi-badge').style.display = 'inline-flex';
+            const wifiCard = document.getElementById('wifi-card');
+            if (!wifiCard.dataset.userToggled) {
+              wifiCard.classList.add('open');
+            }
+            if (!wifiScanLoaded) {
+              fetchWifiNetworks();
+            }
+          } else {
+            document.getElementById('hotspot-banner').classList.remove('visible');
+            document.getElementById('wifi-badge').style.display = 'none';
+          }
           updateUI();
         }
       } catch (err) {}
     }
+
+    // Wi-Fi Captive Portal & Network Selection
+    let wifiScanLoaded = false;
+
+    function renderWifiSignalSvg(rssi) {
+      const level = rssi >= -65 ? 3 : (rssi >= -78 ? 2 : 1);
+      return `<svg class="wifi-sig-icon" viewBox="0 0 24 24">
+        <path d="M12 4C7.31 4 3.07 5.9 0 8.98L12 21 24 8.98C20.93 5.9 16.69 4 12 4z" opacity="${level >= 3 ? '1' : '0.25'}"/>
+        <path d="M12 8.5c-3.1 0-5.9 1.25-7.95 3.3L12 20.3l7.95-8.5C17.9 9.75 15.1 8.5 12 8.5z" opacity="${level >= 2 ? '1' : '0.25'}"/>
+        <circle cx="12" cy="18.5" r="1.5" opacity="${level >= 1 ? '1' : '0.25'}"/>
+      </svg>`;
+    }
+
+    function renderLockSvg() {
+      return `<svg class="wifi-lock-icon" viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>`;
+    }
+
+    function escapeHtml(str) {
+      return (str || '').replace(/[&<>"']/g, m => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[m]));
+    }
+
+    async function fetchWifiNetworks() {
+      const listEl = document.getElementById('wifi-net-list');
+      const refreshBtn = document.getElementById('wifi-refresh-btn');
+      if (refreshBtn) refreshBtn.classList.add('spinning');
+
+      try {
+        const res = await fetch('/config.json');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.mac) {
+            document.getElementById('wifi-card-sub').textContent = `MAC: ${data.mac}`;
+          }
+          const rawAps = Array.isArray(data.aps) ? data.aps.slice(1) : [];
+          const map = new Map();
+          for (const ap of rawAps) {
+            if (!ap.ssid) continue;
+            if (!map.has(ap.ssid) || map.get(ap.ssid).rssi < ap.rssi) {
+              map.set(ap.ssid, ap);
+            }
+          }
+          const sorted = Array.from(map.values()).sort((a, b) => b.rssi - a.rssi);
+          if (sorted.length === 0) {
+            listEl.innerHTML = '<div class="wifi-net-empty">No Wi-Fi networks found. Tap refresh to rescan.</div>';
+          } else {
+            listEl.innerHTML = sorted.map(ap => {
+              const esc = escapeHtml(ap.ssid);
+              const lock = ap.lock ? 1 : 0;
+              return `<div class="wifi-net-item" data-ssid="${esc}" data-lock="${lock}">
+                <div class="wifi-net-left">
+                  ${renderWifiSignalSvg(ap.rssi)}
+                  <span class="wifi-net-ssid">${esc}</span>
+                </div>
+                <div class="wifi-net-right">
+                  ${lock ? renderLockSvg() : ''}
+                  <span class="wifi-net-rssi">${ap.rssi} dBm</span>
+                </div>
+              </div>`;
+            }).join('');
+          }
+          wifiScanLoaded = true;
+        } else {
+          listEl.innerHTML = '<div class="wifi-net-empty">Wi-Fi scan unavailable. Tap refresh to retry.</div>';
+        }
+      } catch (err) {
+        listEl.innerHTML = '<div class="wifi-net-empty">Unable to scan. Enter network manually below.</div>';
+      } finally {
+        if (refreshBtn) refreshBtn.classList.remove('spinning');
+      }
+    }
+
+    document.getElementById('wifi-net-list').addEventListener('click', (e) => {
+      const item = e.target.closest('.wifi-net-item');
+      if (!item) return;
+      document.querySelectorAll('.wifi-net-item').forEach(el => el.classList.remove('selected'));
+      item.classList.add('selected');
+      const ssid = item.dataset.ssid;
+      const isLocked = item.dataset.lock === '1';
+      document.getElementById('wifi-ssid-input').value = ssid;
+      const pskInput = document.getElementById('wifi-psk-input');
+      if (isLocked) {
+        pskInput.placeholder = 'Enter password';
+        pskInput.focus();
+      } else {
+        pskInput.value = '';
+        pskInput.placeholder = 'Open network (no password)';
+      }
+    });
+
+    document.getElementById('wifi-card-toggle').addEventListener('click', (e) => {
+      if (e.target.closest('#wifi-refresh-btn')) return;
+      const card = document.getElementById('wifi-card');
+      card.dataset.userToggled = '1';
+      const willOpen = !card.classList.contains('open');
+      card.classList.toggle('open', willOpen);
+      if (willOpen && !wifiScanLoaded) {
+        fetchWifiNetworks();
+      }
+    });
+
+    document.getElementById('wifi-refresh-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      const card = document.getElementById('wifi-card');
+      card.classList.add('open');
+      fetchWifiNetworks();
+    });
+
+    document.getElementById('wifi-show-pw-btn').addEventListener('click', () => {
+      const pw = document.getElementById('wifi-psk-input');
+      const btn = document.getElementById('wifi-show-pw-btn');
+      if (pw.type === 'password') {
+        pw.type = 'text';
+        btn.textContent = 'Hide';
+      } else {
+        pw.type = 'password';
+        btn.textContent = 'Show';
+      }
+    });
+
+    document.getElementById('wifi-advanced-toggle').addEventListener('click', () => {
+      const adv = document.getElementById('wifi-advanced-content');
+      adv.classList.toggle('open');
+      const chv = document.getElementById('wifi-advanced-chevron');
+      if (chv) chv.style.transform = adv.classList.contains('open') ? 'rotate(180deg)' : 'none';
+    });
+
+    async function handleWifiConnect() {
+      const ssid = document.getElementById('wifi-ssid-input').value.trim();
+      const psk = document.getElementById('wifi-psk-input').value;
+      const statusMsg = document.getElementById('wifi-status-msg');
+      const btn = document.getElementById('wifi-connect-btn');
+
+      if (!ssid) {
+        statusMsg.className = 'wifi-status-msg visible error';
+        statusMsg.textContent = 'Please enter or select a Wi-Fi network.';
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Saving...';
+      statusMsg.className = 'wifi-status-msg visible loading';
+      statusMsg.textContent = `Saving credentials for "${ssid}" and connecting...`;
+
+      try {
+        const url = `/wifisave?ssid=${encodeURIComponent(ssid)}&psk=${encodeURIComponent(psk)}`;
+        await fetch(url);
+        statusMsg.className = 'wifi-status-msg visible success';
+        statusMsg.innerHTML = `<strong>Credentials saved!</strong> Connecting to <em>${escapeHtml(ssid)}</em>. The setup hotspot will shut down and the speaker will join your network.`;
+        btn.textContent = 'Saved';
+      } catch (err) {
+        statusMsg.className = 'wifi-status-msg visible loading';
+        statusMsg.textContent = `Connecting to ${ssid}... The speaker will switch to this Wi-Fi network.`;
+        btn.textContent = 'Connecting...';
+      }
+    }
+    document.getElementById('wifi-connect-btn').addEventListener('click', handleWifiConnect);
 
     // Instant SSE State Updates (/events) - Case Insensitive Matching
     function connectEvents() {
@@ -1304,6 +1892,14 @@
     });
 
     async function init() {
+      // If accessed via default fallback AP IP (192.168.4.1), immediately activate hotspot mode
+      if (window.location.hostname === '192.168.4.1') {
+        document.getElementById('hotspot-banner').classList.add('visible');
+        document.getElementById('wifi-badge').style.display = 'inline-flex';
+        document.getElementById('wifi-card').classList.add('open');
+        fetchWifiNetworks();
+      }
+
       await syncState();
       updateUI();
       loadComponents();
