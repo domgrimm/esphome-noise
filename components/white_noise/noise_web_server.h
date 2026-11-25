@@ -7,7 +7,7 @@
 #if defined(USE_NETWORK) && !defined(USE_ZEPHYR)
 #include "esphome/components/web_server_base/web_server_base.h"
 
-namespace esphome::noise {
+namespace esphome::white_noise {
 
 class NoiseWebServer;
 
@@ -53,6 +53,6 @@ class NoiseWebServer : public Component {
   bool show_components_{true};
 };
 
-}  // namespace esphome::noise
+}  // namespace esphome::white_noise
 
 #endif

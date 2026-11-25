@@ -4,7 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 
-namespace esphome::noise {
+namespace esphome::white_noise {
 
 constexpr uint8_t NOISE_INDEX_HTML_GZ[14028] PROGMEM = {
   0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe5, 0x7d, 0x5b, 0x77, 0x1b, 0x47,
@@ -888,4 +888,4 @@ constexpr uint8_t NOISE_INDEX_HTML_GZ[14028] PROGMEM = {
 
 constexpr size_t NOISE_INDEX_HTML_GZ_SIZE = 14028;
 
-}  // namespace esphome::noise
+}  // namespace esphome::white_noise

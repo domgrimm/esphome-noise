@@ -18,7 +18,7 @@ logger:
 
 external_components:
   - source: github://domgrimm/esphome-noise
-    components: [noise]
+    components: [white_noise]
 
 i2s_audio:
   - i2s_lrclk_pin: GPIO25
@@ -32,7 +32,7 @@ speaker:
 
 # Example: Two noise components on one device (e.g. ambient bed + alert beeps),
 # or a media player coordinated with noise
-noise:
+white_noise:
   # High-priority alert / notification sound player
   - id: alert_noise
     speaker: hardware_speaker

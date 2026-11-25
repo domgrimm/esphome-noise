@@ -19,9 +19,9 @@
 #include "esphome/components/network/ip_address.h"
 #endif
 
-namespace esphome::noise {
+namespace esphome::white_noise {
 
-static const char *const TAG = "noise.web_server";
+static const char *const TAG = "white_noise.web_server";
 
 #ifdef USE_WIFI
 static bool s_ap_grace_active = false;
@@ -382,6 +382,6 @@ void NoiseWebServer::dump_config() {
   ESP_LOGCONFIG(TAG, "  Route: / (hijacked, webserver-listcomponents compatible)");
 }
 
-}  // namespace esphome::noise
+}  // namespace esphome::white_noise
 
 #endif

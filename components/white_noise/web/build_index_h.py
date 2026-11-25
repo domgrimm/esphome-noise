@@ -33,7 +33,7 @@ def build():
 #include <cstddef>
 #include <cstdint>
 
-namespace esphome::noise {{
+namespace esphome::white_noise {{
 
 constexpr uint8_t NOISE_INDEX_HTML_GZ[{size}] PROGMEM = {{
 {joined_bytes}
@@ -41,7 +41,7 @@ constexpr uint8_t NOISE_INDEX_HTML_GZ[{size}] PROGMEM = {{
 
 constexpr size_t NOISE_INDEX_HTML_GZ_SIZE = {size};
 
-}}  // namespace esphome::noise
+}}  // namespace esphome::white_noise
 """
 
     with open(OUTPUT_H, "w", encoding="utf-8") as f:

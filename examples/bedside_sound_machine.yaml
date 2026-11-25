@@ -18,7 +18,7 @@ logger:
 
 external_components:
   - source: github://domgrimm/esphome-noise
-    components: [noise]
+    components: [white_noise]
 
 i2s_audio:
   - i2s_lrclk_pin: GPIO25
@@ -42,7 +42,7 @@ light:
     output: nightlight_led
     name: "Bedside Light"
 
-noise:
+white_noise:
   id: sleep_noise
   speaker: bedside_speaker
   channels: 2          # true spatial stereo if hardware supports dual channels
@@ -109,5 +109,5 @@ binary_sensor:
       - min_length: 800ms
         max_length: 3000ms
         then:
-          - noise.stop:
+          - white_noise.stop:
               id: sleep_noise

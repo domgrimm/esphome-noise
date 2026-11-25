@@ -22,7 +22,7 @@ wifi:
 
 external_components:
   - source: github://domgrimm/esphome-noise
-    components: [noise]
+    components: [white_noise]
 
 # Hardware audio definition
 i2s_audio:
@@ -45,7 +45,7 @@ speaker:
     i2s_dout_pin: GPIO22
     dac_type: external
 
-noise:
+white_noise:
   id: my_noise
   speaker: assistant_speaker
   select:
@@ -61,14 +61,14 @@ voice_assistant:
   speaker: assistant_speaker
   # When the wake word triggers or button is pressed: duck noise to 15%
   on_listening:
-    - noise.duck:
+    - white_noise.duck:
         id: my_noise
         level: 15%
   # When conversation completes: smoothly restore noise volume
   on_end:
-    - noise.unduck:
+    - white_noise.unduck:
         id: my_noise
   # On error or cancellation: restore volume
   on_error:
-    - noise.unduck:
+    - white_noise.unduck:
         id: my_noise

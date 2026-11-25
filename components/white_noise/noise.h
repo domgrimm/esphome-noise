@@ -31,7 +31,7 @@ bool audio_output_is_ready();
 }  // namespace esphome::airplay_receiver
 #endif
 
-namespace esphome::noise {
+namespace esphome::white_noise {
 
 enum class NoiseVariant : uint8_t {
   WHITE,
@@ -373,4 +373,4 @@ template<typename... Ts> class NoiseSetSpeakerVolumeAction : public Action<Ts...
   }
 };
 
-}  // namespace esphome::noise
+}  // namespace esphome::white_noise

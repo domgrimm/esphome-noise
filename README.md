@@ -31,8 +31,14 @@ Hardware-agnostic: binds to any standard ESPHome `speaker` platform (I2S DAC, in
 ```yaml
 external_components:
   - source: github://domgrimm/esphome-noise
-    components: [noise]
+    components: [white_noise]
 ```
+
+> **Upgrading from the old `noise:` component?** The component was renamed to
+> `white_noise` because ESPHome 2026.11 added a built-in component called `noise`
+> (the Noise Protocol encryption layer used by `api:`). Rename the YAML key
+> `noise:` to `white_noise:`, the `components:` entry above, and every
+> `noise.<action>` call to `white_noise.<action>`.
 
 ---
 
@@ -40,7 +46,7 @@ external_components:
 
 ### Standard Speaker Setup
 ```yaml
-noise:
+white_noise:
   id: my_noise
   speaker: i2s_audio_speaker
 
@@ -65,7 +71,7 @@ external_components:
   - source: github://henriklied/esphome-airplay2
     components: [airplay_receiver]
   - source: github://domgrimm/esphome-noise
-    components: [noise]
+    components: [white_noise]
 
 # AirPlay receiver controls the hardware I2S pins:
 airplay_receiver:
@@ -76,7 +82,7 @@ airplay_receiver:
   i2s_dout_pin: 16
 
 # Noise component outputs directly through the AirPlay audio backend:
-noise:
+white_noise:
   id: my_noise
   airplay_receiver: airplay
   select:
@@ -92,7 +98,7 @@ noise:
 When running background noise alongside announcements, TTS alerts, or other media players, `esphome-noise` can automatically coordinate volume levels without complex manual automations:
 
 ```yaml
-noise:
+white_noise:
   speaker: hardware_speaker
 
   # Automatically duck noise volume to 15% whenever any of these players are active:
@@ -159,71 +165,71 @@ When an external player starts playing, `esphome-noise` smoothly ramps down. Whe
 
 ## Actions
 
-### `noise.start`
+### `white_noise.start`
 Starts noise playback:
 ```yaml
-- noise.start:
+- white_noise.start:
     id: my_noise
     variant: campfire   # Any variant name (templatable)
     duration: 30min     # Auto-off duration (optional, templatable)
     volume: 75%         # Playback volume (optional, templatable)
 ```
 
-### `noise.stop`
+### `white_noise.stop`
 Smoothly fades out and stops playback:
 ```yaml
-- noise.stop:
+- white_noise.stop:
     id: my_noise
 ```
 
-### `noise.pause` & `noise.resume`
+### `white_noise.pause` & `white_noise.resume`
 Pause playback with smooth fade-out and resume where you left off:
 ```yaml
-- noise.pause:
+- white_noise.pause:
     id: my_noise
-- noise.resume:
+- white_noise.resume:
     id: my_noise
 ```
 
-### `noise.duck` & `noise.unduck`
+### `white_noise.duck` & `white_noise.unduck`
 Temporarily drops volume during voice assistant listening or announcements:
 ```yaml
-- noise.duck:
+- white_noise.duck:
     id: my_noise
     level: 20%  # Target duck volume (default 20%, templatable)
 
-- noise.unduck:
+- white_noise.unduck:
     id: my_noise
 ```
 
-### `noise.set_volume`
+### `white_noise.set_volume`
 Adjusts internal generator volume without touching hardware master amplifier gain:
 ```yaml
-- noise.set_volume:
+- white_noise.set_volume:
     id: my_noise
     volume: 60%  # 0% to 100% (templatable)
 ```
 
-### `noise.set_speaker_volume`
+### `white_noise.set_speaker_volume`
 Adjusts the master hardware speaker volume / amplifier ceiling (also sets the associated media player if configured):
 ```yaml
-- noise.set_speaker_volume:
+- white_noise.set_speaker_volume:
     id: my_noise
     volume: 80%  # 0% to 100% (templatable)
 ```
 
-### `noise.set_tone`
+### `white_noise.set_tone`
 Adjusts the acoustic low-pass filter (0% = warm & deep rumble, 100% = crisp full spectrum):
 ```yaml
-- noise.set_tone:
+- white_noise.set_tone:
     id: my_noise
     tone: 40%  # 0% to 100% (templatable)
 ```
 
-### `noise.set_sleep_timer`
+### `white_noise.set_sleep_timer`
 Sets the auto-off sleep timer duration in minutes (`0` cancels the active timer):
 ```yaml
-- noise.set_sleep_timer:
+- white_noise.set_sleep_timer:
     id: my_noise
     sleep_timer: 45  # Duration in minutes (templatable)
 ```
@@ -257,7 +263,7 @@ The custom web server uses route hijacking via `web_server_base::add_handler` re
 ```yaml
 external_components:
   - source: github://domgrimm/esphome-noise
-    components: [noise]
+    components: [white_noise]
   - source: github://domgrimm/esphome-webserver-listcomponents
     components: [webserver_listcomponents]
 
@@ -266,7 +272,7 @@ web_server:
 
 webserver_listcomponents:
 
-noise:
+white_noise:
   speaker: hardware_speaker
   web_server:
     title: "Bedside Noise Machine" # Optional: custom page title
@@ -275,7 +281,7 @@ noise:
 
 Or simply:
 ```yaml
-noise:
+white_noise:
   speaker: hardware_speaker
   web_server: true
 ```

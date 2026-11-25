@@ -51,7 +51,7 @@ def AUTO_LOAD(config):
 
 MULTI_CONF = True
 
-noise_ns = cg.esphome_ns.namespace("noise")
+noise_ns = cg.esphome_ns.namespace("white_noise")
 NoiseComponent = noise_ns.class_("NoiseComponent", cg.Component)
 NoiseWebServer = noise_ns.class_("NoiseWebServer", cg.Component)
 NoiseSelect = noise_ns.class_("NoiseSelect", select.Select)
@@ -332,7 +332,7 @@ async def to_code(config):
 
 
 @automation.register_action(
-    "noise.start",
+    "white_noise.start",
     NoiseStartAction,
     cv.Schema(
         {
@@ -360,7 +360,7 @@ async def noise_start_to_code(config, action_id, template_arg, args):
 
 
 @automation.register_action(
-    "noise.stop",
+    "white_noise.stop",
     NoiseStopAction,
     cv.Schema(
         {
@@ -376,7 +376,7 @@ async def noise_stop_to_code(config, action_id, template_arg, args):
 
 
 @automation.register_action(
-    "noise.pause",
+    "white_noise.pause",
     NoisePauseAction,
     cv.Schema(
         {
@@ -392,7 +392,7 @@ async def noise_pause_to_code(config, action_id, template_arg, args):
 
 
 @automation.register_action(
-    "noise.resume",
+    "white_noise.resume",
     NoiseResumeAction,
     cv.Schema(
         {
@@ -408,7 +408,7 @@ async def noise_resume_to_code(config, action_id, template_arg, args):
 
 
 @automation.register_action(
-    "noise.duck",
+    "white_noise.duck",
     NoiseDuckAction,
     cv.Schema(
         {
@@ -427,7 +427,7 @@ async def noise_duck_to_code(config, action_id, template_arg, args):
 
 
 @automation.register_action(
-    "noise.unduck",
+    "white_noise.unduck",
     NoiseUnduckAction,
     cv.Schema(
         {
@@ -443,7 +443,7 @@ async def noise_unduck_to_code(config, action_id, template_arg, args):
 
 
 @automation.register_action(
-    "noise.set_volume",
+    "white_noise.set_volume",
     NoiseSetVolumeAction,
     cv.Schema(
         {
@@ -462,7 +462,7 @@ async def noise_set_volume_to_code(config, action_id, template_arg, args):
 
 
 @automation.register_action(
-    "noise.set_tone",
+    "white_noise.set_tone",
     NoiseSetToneAction,
     cv.Schema(
         {
@@ -481,7 +481,7 @@ async def noise_set_tone_to_code(config, action_id, template_arg, args):
 
 
 @automation.register_action(
-    "noise.set_sleep_timer",
+    "white_noise.set_sleep_timer",
     NoiseSetSleepTimerAction,
     cv.Schema(
         {
@@ -500,7 +500,7 @@ async def noise_set_sleep_timer_to_code(config, action_id, template_arg, args):
 
 
 @automation.register_action(
-    "noise.set_speaker_volume",
+    "white_noise.set_speaker_volume",
     NoiseSetSpeakerVolumeAction,
     cv.Schema(
         {

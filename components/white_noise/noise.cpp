@@ -8,9 +8,9 @@
 #include <cmath>
 #include <algorithm>
 
-namespace esphome::noise {
+namespace esphome::white_noise {
 
-static const char *const TAG = "noise";
+static const char *const TAG = "white_noise";
 
 const char *noise_variant_to_string(NoiseVariant variant) {
   switch (variant) {
@@ -986,4 +986,4 @@ void NoiseComponent::generate_chunk_(int16_t *samples, size_t frames) {
   this->rng_r_ = rng_r;
 }
 
-}  // namespace esphome::noise
+}  // namespace esphome::white_noise

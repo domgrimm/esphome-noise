@@ -43,7 +43,7 @@ external_components:
   - source: github://henriklied/esphome-airplay2
     components: [airplay_receiver]
   - source: github://domgrimm/esphome-noise
-    components: [noise]
+    components: [white_noise]
 
 # AirPlay 2 receiver controls the hardware I2S pins to the DAC (e.g. PCM5102A or TAS5805M)
 airplay_receiver:
@@ -57,7 +57,7 @@ airplay_receiver:
   amp_idle_timeout: 60
 
 # Noise machine outputs directly into the AirPlay 2 audio output
-noise:
+white_noise:
   id: ambient_noise
   airplay_receiver: airplay
 

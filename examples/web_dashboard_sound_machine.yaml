@@ -18,7 +18,7 @@ wifi:
 external_components:
   # Noise generator component
   - source: github://domgrimm/esphome-noise
-    components: [noise]
+    components: [white_noise]
 
   # Optional but recommended: listcomponents component to surface all device entities in the web dashboard
   - source: github://domgrimm/esphome-webserver-listcomponents
@@ -41,7 +41,7 @@ speaker:
     i2s_dout_pin: GPIO22
     dac_type: external
 
-noise:
+white_noise:
   id: bedside_noise
   speaker: i2s_audio_speaker
 
