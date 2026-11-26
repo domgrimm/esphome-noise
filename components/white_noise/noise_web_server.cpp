@@ -51,9 +51,19 @@ bool NoiseWebHandler::canHandle(AsyncWebServerRequest *request) const {
     // Let native captive portal handle GET /config.json
     if (url == "/config.json")
       return false;
-    // Intercept all other GET requests (captive portal probe URLs, root, index.html, etc.)
-    if (method == HTTP_GET)
+    if (method == HTTP_GET) {
+      // Leave the web server's own routes alone so the dashboard can still list
+      // and set entities while the hotspot is up: /components, /events, the UI
+      // assets and /<domain>/<object_id>. Only the dashboard itself and the
+      // single-segment OS probe URLs (/hotspot-detect.html, /generate_204,
+      // /ncsi.txt, ...) get hijacked.
+      if (url == "/components" || url == "/components/" || url == "/events" || url == "/0.js" || url == "/0.css")
+        return false;
+      auto second = url.find('/', 1);
+      if (second != std::string::npos && url.find('/', second + 1) == std::string::npos)
+        return false;  // /<domain>/<object_id>
       return true;
+    }
   }
 #endif
 

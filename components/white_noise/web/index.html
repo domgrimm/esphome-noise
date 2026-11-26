@@ -588,6 +588,19 @@
       cursor: pointer;
     }
     .btn-press:active { transform: scale(0.95); }
+    .entity-input {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      font-size: 0.75rem;
+      padding: 5px 8px;
+      max-width: 150px;
+      outline: none;
+    }
+    .entity-input:focus { border-color: var(--border-focus); }
+    .entity-input[type="number"] { width: 72px; }
 
     /* Hotspot Banner */
     .hotspot-banner {
@@ -1178,12 +1191,12 @@
         <div class="wifi-form">
           <div class="wifi-input-wrap">
             <label class="wifi-input-label" for="wifi-ssid-input">Network Name (SSID)</label>
-            <input type="text" class="wifi-input" id="wifi-ssid-input" placeholder="Tap network above or enter SSID" maxlength="32" autocomplete="off" autocapitalize="off" spellcheck="false" readonly onfocus="this.removeAttribute('readonly')" onpointerdown="this.removeAttribute('readonly')">
+            <input type="text" class="wifi-input" id="wifi-ssid-input" placeholder="Tap network above or enter SSID" maxlength="32" autocomplete="off" autocapitalize="off" spellcheck="false" readonly onpointerdown="this.removeAttribute('readonly')">
           </div>
           <div class="wifi-input-wrap">
             <label class="wifi-input-label" for="wifi-psk-input">Password</label>
             <div class="wifi-input-row">
-              <input type="password" class="wifi-input" id="wifi-psk-input" placeholder="Password (leave empty if open)" maxlength="64" autocomplete="current-password" readonly onfocus="this.removeAttribute('readonly')" onpointerdown="this.removeAttribute('readonly')" style="padding-right: 58px;">
+              <input type="password" class="wifi-input" id="wifi-psk-input" placeholder="Password (leave empty if open)" maxlength="64" autocomplete="current-password" readonly onpointerdown="this.removeAttribute('readonly')" style="padding-right: 58px;">
               <button type="button" class="wifi-show-pw-btn" id="wifi-show-pw-btn">Show</button>
             </div>
           </div>
@@ -1635,12 +1648,23 @@
       }
 
       list.innerHTML = filtered.map(e => {
+        const attrs = `class="entity-input" data-type="${e.type}" data-id="${e.object_id}"`;
         let ctrl = '';
         if (e.type === 'switch' || e.type === 'light') {
           const isOn = (e.state || '').toUpperCase() === 'ON';
           ctrl = `<div class="toggle-switch ${isOn ? 'on' : ''}" data-type="${e.type}" data-id="${e.object_id}"></div>`;
         } else if (e.type === 'button') {
           ctrl = `<button class="btn-press" data-type="${e.type}" data-id="${e.object_id}">Press</button>`;
+        } else if (e.type === 'number') {
+          ctrl = `<input ${attrs} type="number" step="any" inputmode="decimal">`;
+        } else if (e.type === 'select') {
+          ctrl = `<select ${attrs}></select>`;
+        } else if (e.type === 'time') {
+          ctrl = `<input ${attrs} type="time" step="1">`;
+        } else if (e.type === 'date') {
+          ctrl = `<input ${attrs} type="date">`;
+        } else if (e.type === 'datetime') {
+          ctrl = `<input ${attrs} type="datetime-local" step="1">`;
         } else {
           ctrl = `<span style="font-family:var(--font-mono); font-size:0.75rem; color:var(--text-muted);">${e.state || '--'}</span>`;
         }
@@ -1655,6 +1679,36 @@
           </div>
         `;
       }).join('');
+
+      hydrateEntityValues();
+    }
+
+    // Fill the drawer's inputs/selects from the device (lazily, once per entity).
+    const entityStateCache = {};
+    async function hydrateEntityValues() {
+      const els = document.querySelectorAll('#components-list .entity-input');
+      for (const el of els) {
+        const type = el.dataset.type;
+        const oid = el.dataset.id;
+        const key = `${type}/${oid}`;
+        if (entityStateCache[key] === undefined) {
+          entityStateCache[key] = null;
+          try {
+            const res = await fetch(`/${type}/${oid}?detail=all`);
+            if (res.ok) entityStateCache[key] = await res.json();
+          } catch (err) {}
+        }
+        const d = entityStateCache[key];
+        if (!d) continue;
+        if (type === 'select') {
+          const current = d.state || d.value;
+          el.innerHTML = (d.option || []).map(o => `<option${o === current ? ' selected' : ''}>${o}</option>`).join('');
+        } else if (type === 'datetime') {
+          el.value = String(d.value ?? d.state ?? '').replace(' ', 'T');
+        } else {
+          el.value = d.value !== undefined ? d.value : (d.state || '');
+        }
+      }
     }
 
     document.getElementById('components-search').addEventListener('input', (e) => {
@@ -1676,6 +1730,27 @@
         const id = btn.dataset.id;
         if (!isMock) fetch(`/${type}/${id}/press`, { method: 'POST' });
       }
+    });
+
+    document.getElementById('components-list').addEventListener('change', (e) => {
+      const el = e.target.closest('.entity-input');
+      if (!el || isMock) return;
+      const type = el.dataset.type;
+      const id = el.dataset.id;
+      let value = el.value;
+      if (value === '') return;
+      if (type === 'datetime') value = value.replace('T', ' ');
+      const param = type === 'select' ? 'option' : 'value';
+      fetch(`/${type}/${id}/set?${param}=${encodeURIComponent(value)}`, { method: 'POST' })
+        .then(res => {
+          if (!res.ok) return;
+          const key = `${type}/${id}`;
+          const d = entityStateCache[key] || {};
+          d.value = value;
+          d.state = value;
+          entityStateCache[key] = d;
+        })
+        .catch(() => {});
     });
 
     // Server Synchronization: Periodic polling of /api/noise
