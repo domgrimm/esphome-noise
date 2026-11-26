@@ -1648,13 +1648,15 @@
       }
 
       list.innerHTML = filtered.map(e => {
-        const attrs = `class="entity-input" data-type="${e.type}" data-id="${e.object_id}"`;
+        // The web server addresses entities by their name (URL-encoded), not object_id.
+        const name = escapeHtml(e.name || e.object_id);
+        const attrs = `class="entity-input" data-type="${e.type}" data-name="${name}" data-id="${e.object_id}"`;
         let ctrl = '';
         if (e.type === 'switch' || e.type === 'light') {
           const isOn = (e.state || '').toUpperCase() === 'ON';
-          ctrl = `<div class="toggle-switch ${isOn ? 'on' : ''}" data-type="${e.type}" data-id="${e.object_id}"></div>`;
+          ctrl = `<div class="toggle-switch ${isOn ? 'on' : ''}" data-type="${e.type}" data-name="${name}" data-id="${e.object_id}"></div>`;
         } else if (e.type === 'button') {
-          ctrl = `<button class="btn-press" data-type="${e.type}" data-id="${e.object_id}">Press</button>`;
+          ctrl = `<button class="btn-press" data-type="${e.type}" data-name="${name}" data-id="${e.object_id}">Press</button>`;
         } else if (e.type === 'number') {
           ctrl = `<input ${attrs} type="number" step="any" inputmode="decimal">`;
         } else if (e.type === 'select') {
@@ -1689,12 +1691,12 @@
       const els = document.querySelectorAll('#components-list .entity-input');
       for (const el of els) {
         const type = el.dataset.type;
-        const oid = el.dataset.id;
-        const key = `${type}/${oid}`;
+        const name = el.dataset.name;
+        const key = `${type}/${name}`;
         if (entityStateCache[key] === undefined) {
           entityStateCache[key] = null;
           try {
-            const res = await fetch(`/${type}/${oid}?detail=all`);
+            const res = await fetch(`/${type}/${encodeURIComponent(name)}?detail=all`);
             if (res.ok) entityStateCache[key] = await res.json();
           } catch (err) {}
         }
@@ -1719,16 +1721,16 @@
       const sw = e.target.closest('.toggle-switch');
       if (sw) {
         const type = sw.dataset.type;
-        const id = sw.dataset.id;
+        const name = encodeURIComponent(sw.dataset.name);
         sw.classList.toggle('on');
-        if (!isMock) fetch(`/${type}/${id}/toggle`, { method: 'POST' });
+        if (!isMock) fetch(`/${type}/${name}/toggle`, { method: 'POST' });
         return;
       }
       const btn = e.target.closest('.btn-press');
       if (btn) {
         const type = btn.dataset.type;
-        const id = btn.dataset.id;
-        if (!isMock) fetch(`/${type}/${id}/press`, { method: 'POST' });
+        const name = encodeURIComponent(btn.dataset.name);
+        if (!isMock) fetch(`/${type}/${name}/press`, { method: 'POST' });
       }
     });
 
@@ -1736,15 +1738,15 @@
       const el = e.target.closest('.entity-input');
       if (!el || isMock) return;
       const type = el.dataset.type;
-      const id = el.dataset.id;
+      const name = el.dataset.name;
       let value = el.value;
       if (value === '') return;
       if (type === 'datetime') value = value.replace('T', ' ');
       const param = type === 'select' ? 'option' : 'value';
-      fetch(`/${type}/${id}/set?${param}=${encodeURIComponent(value)}`, { method: 'POST' })
+      fetch(`/${type}/${encodeURIComponent(name)}/set?${param}=${encodeURIComponent(value)}`, { method: 'POST' })
         .then(res => {
           if (!res.ok) return;
-          const key = `${type}/${id}`;
+          const key = `${type}/${name}`;
           const d = entityStateCache[key] || {};
           d.value = value;
           d.state = value;
