@@ -1688,10 +1688,11 @@
     // Fill the drawer's inputs/selects from the device (lazily, once per entity).
     const entityStateCache = {};
     async function hydrateEntityValues() {
-      const els = document.querySelectorAll('#components-list .entity-input');
+      const els = document.querySelectorAll('#components-list [data-name]');
       for (const el of els) {
         const type = el.dataset.type;
         const name = el.dataset.name;
+        if (type === 'button') continue;
         const key = `${type}/${name}`;
         if (entityStateCache[key] === undefined) {
           entityStateCache[key] = null;
@@ -1702,7 +1703,9 @@
         }
         const d = entityStateCache[key];
         if (!d) continue;
-        if (type === 'select') {
+        if (el.classList.contains('toggle-switch')) {
+          el.classList.toggle('on', (d.state || '').toUpperCase() === 'ON');
+        } else if (type === 'select') {
           const current = d.state || d.value;
           el.innerHTML = (d.option || []).map(o => `<option${o === current ? ' selected' : ''}>${o}</option>`).join('');
         } else if (type === 'datetime') {
